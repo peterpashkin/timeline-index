@@ -1,0 +1,4 @@
+/Users/peter.pashkin/CLionProjects/TimelineIndex/cmake-build-debug/CMakeFiles/MyBoostProject.dir
+/Users/peter.pashkin/CLionProjects/TimelineIndex/cmake-build-debug/CMakeFiles/TimelineIndex.dir
+/Users/peter.pashkin/CLionProjects/TimelineIndex/cmake-build-debug/CMakeFiles/edit_cache.dir
+/Users/peter.pashkin/CLionProjects/TimelineIndex/cmake-build-debug/CMakeFiles/rebuild_cache.dir
