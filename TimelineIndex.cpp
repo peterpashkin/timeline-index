@@ -7,9 +7,28 @@
 
 
 TimelineIndex::TimelineIndex(TemporalTable& given_table) : table(given_table), temporal_table_size(given_table.get_table_size()) {
-    // TODO init checkpoints
     event_list = EventList(given_table.get_number_of_events());
     version_map = VersionMap(given_table, event_list);
+
+    // for now checkpoints we will create 100 checkpoints
+    uint32_t step_size = std::max(given_table.next_version / 100, 1u);
+    boost::dynamic_bitset<> current_bitset(temporal_table_size, 0);
+
+    for(int i=0; i<given_table.next_version; i++) {
+        if(i % step_size == 0) {
+            checkpoints.emplace_back(i, current_bitset);
+        }
+
+        auto events = version_map.get_events(i);
+        for(auto& event : events) {
+            if(event.second == EventType::INSERT) {
+                current_bitset.set(event.first);
+            } else if(event.second == EventType::DELETE) {
+                current_bitset.reset(event.first);
+            }
+        }
+    }
+
 }
 
 

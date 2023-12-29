@@ -19,7 +19,7 @@ std::span<Event> EventList::get_events(unsigned int event_number) {
 }
 
 std::span<Event> EventList::get_events(uint32_t start_version, uint32_t end_version) {
-    std::span<Event> result(events.begin() + start_version + 1, events.begin() + end_version);
+    std::span<Event> result(events.begin() + start_version, events.begin() + end_version);
     return result;
 }
 

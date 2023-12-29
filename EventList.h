@@ -23,11 +23,12 @@ typedef std::pair<uint32_t, EventType> Event;
  * of the Timeline. It is a list of Events, sorted by their timestamp.
  */
 class EventList {
+    friend class TimelineIndex;
     std::vector<Event> events;
 
 public:
     EventList() = default;
-    EventList(uint32_t size);
+    explicit EventList(uint32_t size);
     void append(Event event);
     std::span<Event> get_events(unsigned int version);
     std::span<Event> get_events(uint32_t start_version, uint32_t end_version);

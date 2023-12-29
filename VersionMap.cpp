@@ -33,11 +33,11 @@ VersionMap::VersionMap(TemporalTable& table, EventList& list) : events(list), ve
 }
 
 std::span<Event> VersionMap::get_events(uint32_t version) {
-    if(version >= versions.size()) {
-        throw std::invalid_argument("Version does not exist");
+    if(version == 0) {
+        return events.get_events(versions[version]);
+    } else {
+        return get_events(version-1, version);
     }
-
-    return events.get_events(versions[version]);
 }
 
 std::span<Event> VersionMap::get_events(uint32_t start_version, uint32_t end_version) {

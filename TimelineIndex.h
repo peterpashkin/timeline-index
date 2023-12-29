@@ -19,7 +19,7 @@ typedef uint32_t version;
  * that represent the state of the table at a given version
  */
 class TimelineIndex {
-    TemporalTable table;
+    TemporalTable& table;
     VersionMap version_map;
     EventList event_list;
     std::vector<std::pair<version, checkpoint>> checkpoints;
@@ -28,7 +28,7 @@ class TimelineIndex {
     std::pair<version, checkpoint> find_nearest_checkpoint(version query_version);
 
 public:
-    TimelineIndex(TemporalTable& table);
+    explicit TimelineIndex(TemporalTable& table);
     std::vector<Tuple> time_travel(version query_version);
 
     //TODO might consider lambda functions for general purpose aggregation
