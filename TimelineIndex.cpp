@@ -4,11 +4,11 @@
 
 #include "TimelineIndex.h"
 
+#include <set>
 
 
 TimelineIndex::TimelineIndex(TemporalTable& given_table) : table(given_table), temporal_table_size(given_table.get_table_size()) {
-    event_list = EventList(given_table.get_number_of_events());
-    version_map = VersionMap(given_table, event_list);
+    version_map = VersionMap(given_table);
 
     // for now checkpoints we will create 100 checkpoints
     uint32_t step_size = std::max(given_table.next_version / 100, 1u);
@@ -39,9 +39,9 @@ std::pair<version, checkpoint> TimelineIndex::find_nearest_checkpoint(version qu
     }
 
     // binary search
-    size_t left = 0;
-    size_t right = checkpoints.size() - 1;
-    size_t middle = (left + right) / 2;
+    uint64_t left = 0;
+    uint64_t right = checkpoints.size() - 1;
+    uint64_t middle = (left + right) / 2;
 
     while (left < right) {
         if (checkpoints[middle].first < query_version) {
@@ -74,9 +74,9 @@ std::vector<Tuple> TimelineIndex::time_travel(uint32_t version) {
     return table.get_tuples(bitset);
 }
 
-std::vector<size_t> TimelineIndex::temporal_sum(uint16_t index) {
-    size_t current_sum = 0;
-    std::vector<size_t> result;
+std::vector<uint64_t> TimelineIndex::temporal_sum(uint16_t index) {
+    uint64_t current_sum = 0;
+    std::vector<uint64_t> result;
 
     // for each version apply all changes in sum and add to result
     for(int i=0; i<version_map.current_version; i++) {
@@ -89,6 +89,66 @@ std::vector<size_t> TimelineIndex::temporal_sum(uint16_t index) {
             }
         }
         result.push_back(current_sum);
+    }
+
+    return result;
+}
+
+uint64_t get_max_element(const std::multiset<uint64_t>& max_set) {
+    return *max_set.begin();
+}
+
+uint64_t get_min_element(const std::multiset<uint64_t>& max_set) {
+    return *max_set.rbegin();
+}
+
+
+std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
+    std::vector<uint64_t> result;
+    std::multiset<uint64_t> max_set;
+    // TODO play with k
+    uint16_t k = 100;
+
+    // generally the next two vectors are mostly irrelevant.
+    // our assumption is that the values are mostly taken from the max_set
+    // the vectors are only used if the multiset gets empty -> all values removed in a row, highly unlikely
+
+    std::vector<uint64_t> inserted_values;
+    // use unordered_map ??
+    std::vector<uint64_t> deleted_values;
+
+    for(int i=0; i<version_map.current_version; i++) {
+        auto events = version_map.get_events(i);
+        for(auto& event : events) {
+
+            auto inserting_value = table.tuples[event.first].first[index];
+            auto smallest_element = get_min_element(max_set);
+
+            if(event.second == EventType::INSERT) {
+                // get smallest element in descending multiset
+
+                if(max_set.size() < k) {
+                    max_set.insert(inserting_value);
+                } else if(inserting_value > smallest_element) {
+                    // TODO i think it's easier to return an iterator
+                    max_set.erase(max_set.find(smallest_element));
+                    max_set.insert(inserting_value);
+                } else {
+                    inserted_values.push_back(inserting_value);
+                }
+            } else {
+                if(max_set.empty()) {
+                    // TODO painful implementation, very slow, you know what to do
+                }
+                if(inserting_value >= smallest_element) {
+                    // erase from multi_set
+                    max_set.erase(max_set.find(inserting_value));
+                } else {
+                    deleted_values.push_back(inserting_value);
+                }
+            }
+        }
+        result.push_back(*max_set.begin());
     }
 
     return result;

@@ -3,17 +3,19 @@
 //
 #include "VersionMap.h"
 
-VersionMap::VersionMap(TemporalTable& table, EventList& list) : events(list), versions(table.next_version) {
+VersionMap::VersionMap(TemporalTable& table) : events(table.get_number_of_events()), versions(table.next_version + 1) {
     // apply counting sort on the temporal table
+    // offset of 1 is to avoid the double summation from the last loop
+    // e.g. starting of 0 is 0 and not num of tuples with 1
     for(auto& tuple : table.tuples) {
-        versions[tuple.second.start] += 1;
+        versions[tuple.second.start + 1] += 1;
         if(tuple.second.end.has_value()) {
-            versions[tuple.second.end.value()] += 1;
+            versions[tuple.second.end.value() + 1] += 1;
         }
     }
 
     // to get the first index where we insert, we need to add the previous value
-    for(size_t i = 1; i < versions.size(); ++i) {
+    for(uint64_t i = 1; i < versions.size(); ++i) {
         versions[i] += versions[i - 1];
     }
 

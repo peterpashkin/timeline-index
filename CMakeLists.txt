@@ -24,4 +24,5 @@ add_executable(TimelineIndex main.cpp
         VersionMap.cpp
         TemporalTable.h
         TimelineIndex.cpp
-        TemporalTable.cpp)
+        TemporalTable.cpp
+        TempTableTesting.cpp)

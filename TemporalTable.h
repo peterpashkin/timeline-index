@@ -17,9 +17,9 @@
  * @details This class represents a tuple from the Temporal Table, which is a vector of spans
  */
 
-// TODO: consider using a vector of spans instead of a vector of size_t
+// TODO: consider using a vector of spans instead of a vector of uint64_t
 // currently like this to make temporal aggregations more logical
-typedef std::vector<size_t> Tuple;
+typedef std::vector<uint64_t> Tuple;
 struct LifeSpan {
     uint32_t start;
     // tuple might not have been deleted, then this value is None
@@ -32,7 +32,6 @@ struct LifeSpan {
  */
 class TemporalTable {
 public:
-
     uint32_t next_version;
 
     /**
@@ -42,7 +41,7 @@ public:
      */
     std::vector<std::pair<Tuple, LifeSpan>> tuples;
 
-    size_t get_table_size();
+    uint64_t get_table_size();
 
     /**
      * @brief Returns all tuples that are alive at the given version
@@ -55,8 +54,13 @@ public:
      *
      * @return number of events in the table
      */
-    size_t get_number_of_events();
+    uint64_t get_number_of_events();
 
+
+    // extremely naive approaches, just for testing
+    std::vector<Tuple> time_travel(uint32_t query_version);
+    std::vector<uint64_t> temporal_sum(uint16_t index);
+    std::vector<uint64_t> temporal_max(uint16_t index);
 
 };
 

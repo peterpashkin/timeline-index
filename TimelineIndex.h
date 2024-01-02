@@ -21,9 +21,8 @@ typedef uint32_t version;
 class TimelineIndex {
     TemporalTable& table;
     VersionMap version_map;
-    EventList event_list;
     std::vector<std::pair<version, checkpoint>> checkpoints;
-    const size_t temporal_table_size;
+    const uint64_t temporal_table_size;
 
     std::pair<version, checkpoint> find_nearest_checkpoint(version query_version);
 
@@ -34,9 +33,9 @@ public:
     //TODO might consider lambda functions for general purpose aggregation
 
     // index is a very basic indicator of what to aggregate
-    std::vector<size_t> temporal_sum(uint16_t index);
-    std::vector<size_t> temporal_avg();
-    std::vector<size_t> temporal_max();
+    std::vector<uint64_t> temporal_sum(uint16_t index);
+    std::vector<uint64_t> temporal_avg();
+    std::vector<uint64_t> temporal_max(uint16_t index);
     TimelineIndex temporal_join(TimelineIndex other);
 
 };

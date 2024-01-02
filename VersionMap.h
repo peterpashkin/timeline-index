@@ -25,10 +25,10 @@ class VersionMap {
     std::vector<uint32_t> versions;
 
 public:
-    size_t current_version = 0;
-    VersionMap() = default;
+    uint64_t current_version = 0;
 
-    VersionMap(TemporalTable& table, EventList& list);
+    VersionMap() = default;
+    VersionMap(TemporalTable& table);
 
     /**
      * @brief Inserts all events for the new version
