@@ -8,7 +8,7 @@
 std::vector<Tuple> TemporalTable::time_travel(uint32_t query_version) {
     std::vector<Tuple> result;
     for(auto& tuple : tuples) {
-        if(tuple.second.start <= query_version && (!tuple.second.end.has_value() || tuple.second.end.value() >= query_version)) {
+        if(tuple.second.start <= query_version && (!tuple.second.end.has_value() || tuple.second.end.value() > query_version)) {
             result.push_back(tuple.first);
         }
     }
@@ -20,9 +20,9 @@ std::vector<uint64_t> TemporalTable::temporal_sum(uint16_t index) {
     // for each version check what tuples are currently in the version
     for(int i=0; i<next_version; i++) {
         uint64_t current_sum = 0;
-        for(auto& tuple : tuples) {
-            if(tuple.second.start <= i && (!tuple.second.end.has_value() || tuple.second.end.value() >= i)) {
-                current_sum += tuple.first[index];
+        for(auto& [tuple, lifespan] : tuples) {
+            if(lifespan.start <= i && (!lifespan.end.has_value() || lifespan.end.value() > i)) {
+                current_sum += tuple[index];
             }
         }
         result.push_back(current_sum);
@@ -37,7 +37,7 @@ std::vector<uint64_t> TemporalTable::temporal_max(uint16_t index) {
     for(int i=0; i<next_version; i++) {
         uint64_t current_max = 0;
         for(auto& tuple : tuples) {
-            if(tuple.second.start <= i && (!tuple.second.end.has_value() || tuple.second.end.value() >= i)) {
+            if(tuple.second.start <= i && (!tuple.second.end.has_value() || tuple.second.end.value() > i)) {
                 current_max = std::max(current_max, tuple.first[index]);
             }
         }

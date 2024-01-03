@@ -3,14 +3,14 @@
 //
 #include "VersionMap.h"
 
-VersionMap::VersionMap(TemporalTable& table) : events(table.get_number_of_events()), versions(table.next_version + 1) {
+VersionMap::VersionMap(TemporalTable& table) : events(table.get_number_of_events()), event_number(table.get_number_of_events()), versions(table.next_version + 1) {
     // apply counting sort on the temporal table
     // offset of 1 is to avoid the double summation from the last loop
     // e.g. starting of 0 is 0 and not num of tuples with 1
-    for(auto& tuple : table.tuples) {
-        versions[tuple.second.start + 1] += 1;
-        if(tuple.second.end.has_value()) {
-            versions[tuple.second.end.value() + 1] += 1;
+    for(auto& [_, lifespan] : table.tuples) {
+        versions[lifespan.start + 1] += 1;
+        if(lifespan.end.has_value()) {
+            versions[lifespan.end.value() + 1] += 1;
         }
     }
 
@@ -34,12 +34,9 @@ VersionMap::VersionMap(TemporalTable& table) : events(table.get_number_of_events
     current_version = table.next_version;
 }
 
+
 std::span<Event> VersionMap::get_events(uint32_t version) {
-    if(version == 0) {
-        return events.get_events(versions[version]);
-    } else {
-        return get_events(version-1, version);
-    }
+    return get_events(version, version+1);
 }
 
 std::span<Event> VersionMap::get_events(uint32_t start_version, uint32_t end_version) {
@@ -47,12 +44,16 @@ std::span<Event> VersionMap::get_events(uint32_t start_version, uint32_t end_ver
         throw std::invalid_argument("Version does not exist");
     }
 
-    return events.get_events(versions[start_version], versions[end_version]);
+    uint32_t start_index = start_version == 0 ? 0 : versions[start_version - 1];
+    uint32_t end_index = versions[end_version - 1];
+
+    return events.get_events(start_index, end_index);
 }
 
-void VersionMap::register_version(std::vector<Event> events) {
+void VersionMap::register_version(std::vector<Event>& events) {
     this->events.append_list(events);
-    current_version += events.size();
-    versions.push_back(current_version);
+    ++current_version;
+    event_number += events.size();
+    versions.push_back(event_number);
 }
 

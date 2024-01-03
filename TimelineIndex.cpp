@@ -15,10 +15,6 @@ TimelineIndex::TimelineIndex(TemporalTable& given_table) : table(given_table), t
     boost::dynamic_bitset<> current_bitset(temporal_table_size, 0);
 
     for(int i=0; i<given_table.next_version; i++) {
-        if(i % step_size == 0) {
-            checkpoints.emplace_back(i, current_bitset);
-        }
-
         auto events = version_map.get_events(i);
         for(auto& event : events) {
             if(event.second == EventType::INSERT) {
@@ -26,6 +22,9 @@ TimelineIndex::TimelineIndex(TemporalTable& given_table) : table(given_table), t
             } else if(event.second == EventType::DELETE) {
                 current_bitset.reset(event.first);
             }
+        }
+        if(i % step_size == 0) {
+            checkpoints.emplace_back(i, current_bitset);
         }
     }
 
@@ -62,7 +61,7 @@ std::vector<Tuple> TimelineIndex::time_travel(uint32_t version) {
     auto last_checkpoint_version = last_checkpoint.first;
     auto bitset = last_checkpoint.second;
 
-    auto events = version_map.get_events(last_checkpoint_version, version);
+    auto events = version_map.get_events(last_checkpoint_version + 1, version + 1);
     for(auto& event : events) {
         if(event.second == EventType::INSERT) {
             bitset.set(event.first);
@@ -94,18 +93,18 @@ std::vector<uint64_t> TimelineIndex::temporal_sum(uint16_t index) {
     return result;
 }
 
-uint64_t get_max_element(const std::multiset<uint64_t>& max_set) {
+uint64_t get_max_element(const std::multiset<uint64_t, std::greater<>>& max_set) {
     return *max_set.begin();
 }
 
-uint64_t get_min_element(const std::multiset<uint64_t>& max_set) {
+uint64_t get_min_element(const std::multiset<uint64_t, std::greater<>>& max_set) {
     return *max_set.rbegin();
 }
 
 
 std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
     std::vector<uint64_t> result;
-    std::multiset<uint64_t> max_set;
+    std::multiset<uint64_t, std::greater<>> max_set;
     // TODO play with k
     uint16_t k = 100;
 
@@ -138,7 +137,23 @@ std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
                 }
             } else {
                 if(max_set.empty()) {
-                    // TODO painful implementation, very slow, you know what to do
+                    // construct a new multiset from inserting values and deleted values
+                    // we will achieve this by sorting the vectors and then merging them
+                    std::sort(inserted_values.begin(), inserted_values.end());
+                    std::sort(deleted_values.begin(), deleted_values.end());
+
+                    auto first_r_it = inserted_values.rbegin();
+                    auto second_r_it = deleted_values.rbegin();
+
+                    while(first_r_it != inserted_values.rend() && max_set.size() < k) {
+                        if(*first_r_it > *second_r_it) {
+                            max_set.insert(*first_r_it);
+                            ++first_r_it;
+                        } else {
+                            ++first_r_it;
+                            ++second_r_it;
+                        }
+                    }
                 }
                 if(inserting_value >= smallest_element) {
                     // erase from multi_set
@@ -148,7 +163,8 @@ std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
                 }
             }
         }
-        result.push_back(*max_set.begin());
+        if(max_set.empty()) result.push_back(0);
+        else result.push_back(get_max_element(max_set));
     }
 
     return result;

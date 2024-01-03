@@ -30,7 +30,6 @@ public:
     EventList() = default;
     explicit EventList(uint32_t size);
     void append(Event event);
-    std::span<Event> get_events(unsigned int version);
     std::span<Event> get_events(uint32_t start_version, uint32_t end_version);
     void append_list(std::vector<Event> events);
     void insert(Event event, int index);

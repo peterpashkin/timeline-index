@@ -13,11 +13,6 @@ void EventList::insert(Event event, int index) {
     events[index] = event;
 }
 
-std::span<Event> EventList::get_events(unsigned int event_number) {
-    std::span<Event> result(events.begin(), events.begin() + event_number);
-    return result;
-}
-
 std::span<Event> EventList::get_events(uint32_t start_version, uint32_t end_version) {
     std::span<Event> result(events.begin() + start_version, events.begin() + end_version);
     return result;

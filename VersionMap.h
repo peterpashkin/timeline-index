@@ -25,7 +25,8 @@ class VersionMap {
     std::vector<uint32_t> versions;
 
 public:
-    uint64_t current_version = 0;
+    uint64_t current_version{0};
+    uint64_t event_number;
 
     VersionMap() = default;
     VersionMap(TemporalTable& table);
@@ -34,7 +35,7 @@ public:
      * @brief Inserts all events for the new version
      * @param events
      */
-    void register_version(std::vector<Event> events);
+    void register_version(std::vector<Event>& events);
 
     /**
 
@@ -46,7 +47,7 @@ public:
 
 
     /**
-     * @brief Returns all events between the given versions (exclusive, inclusive]
+     * @brief Returns all events between the given versions [inclusive, exclusive)
      * @param start_version
      * @param end_version
      * @return

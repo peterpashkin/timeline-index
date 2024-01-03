@@ -18,21 +18,25 @@ int main() {
     TimelineIndex index(table);
 
     // testing time_travel
-    auto correct_travel = table.time_travel(50);
-    auto index_travel = index.time_travel(50);
+    for(int i=0; i<110; i++) {
+        auto correct_travel = table.time_travel(i);
+        auto index_travel = index.time_travel(i);
 
-    if(correct_travel != index_travel) {
-        std::cout << "Time travel failed" << std::endl;
-        return 1;
+        assert(correct_travel == index_travel);
     }
 
-    for(int i=0; i<100; i++) {
-        auto correct_sum = table.temporal_sum(i);
-        auto index_sum = index.temporal_sum(i);
 
-        if(correct_sum != index_sum) {
-            std::cout << "Temporal sum failed" << std::endl;
-        }
-    }
+
+
+    auto correct_sum = table.temporal_sum(0);
+    auto index_sum = index.temporal_sum(0);
+
+    assert(correct_sum == index_sum);
+
+    auto correct_max = table.temporal_max(0);
+    auto index_max = index.temporal_max(0);
+
+    assert(correct_max == index_max);
+
 
 }
