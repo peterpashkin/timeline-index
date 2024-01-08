@@ -39,4 +39,7 @@ int main() {
     assert(correct_max == index_max);
 
 
+    std::cout << "All tests passed" << std::endl;
+
+
 }

@@ -169,3 +169,8 @@ std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
 
     return result;
 }
+
+TimelineIndex TimelineIndex::temporal_join(TimelineIndex other) {
+    // TODO implement
+    return TimelineIndex(table);
+}

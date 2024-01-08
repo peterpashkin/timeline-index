@@ -21,8 +21,8 @@ std::vector<Tuple> TemporalTable::get_tuples(boost::dynamic_bitset<> bitset) {
 uint64_t TemporalTable::get_number_of_events() {
     // iterate over all tuples and add the number of events
     uint64_t result = 0;
-    for(auto& tuple : tuples) {
-        result += tuple.second.end.has_value() ? 2 : 1;
+    for(auto& [_, lifespan] : tuples) {
+        result += lifespan.end.has_value() ? 2 : 1;
     }
     return result;
 }
