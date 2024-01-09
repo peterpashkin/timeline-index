@@ -16,8 +16,12 @@ enum EventType {
     DELETE
 };
 
-// ROW_ID and EVENT_TYPE
-typedef std::pair<uint32_t, EventType> Event;
+
+struct Event {
+    uint32_t row_id;
+    uint32_t row_id_second = -1;
+    EventType type;
+};
 
 /**
  * @brief EventList class

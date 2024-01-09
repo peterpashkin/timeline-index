@@ -22,11 +22,11 @@ VersionMap::VersionMap(TemporalTable& table) : events(table.get_number_of_events
     // now we can insert the events, this also initializes the version map correctly
     for(int i = 0; i < table.tuples.size(); ++i) {
         auto& current_tuple_lifespan = table.tuples[i].second;
-        events.insert(Event(i, EventType::INSERT), versions[current_tuple_lifespan.start]);
+        events.insert(Event(i, -1, EventType::INSERT), versions[current_tuple_lifespan.start]);
         ++versions[current_tuple_lifespan.start];
 
         if(current_tuple_lifespan.end.has_value()) {
-            events.insert(Event(i, EventType::DELETE), versions[current_tuple_lifespan.end.value()]);
+            events.insert(Event(i, -1, EventType::DELETE), versions[current_tuple_lifespan.end.value()]);
             ++versions[current_tuple_lifespan.end.value()];
         }
     }

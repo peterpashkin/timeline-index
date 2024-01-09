@@ -17,10 +17,10 @@ TimelineIndex::TimelineIndex(TemporalTable& given_table) : table(given_table), t
     for(int i=0; i<given_table.next_version; i++) {
         auto events = version_map.get_events(i);
         for(auto& event : events) {
-            if(event.second == EventType::INSERT) {
-                current_bitset.set(event.first);
-            } else if(event.second == EventType::DELETE) {
-                current_bitset.reset(event.first);
+            if(event.type == EventType::INSERT) {
+                current_bitset.set(event.row_id);
+            } else if(event.type == EventType::DELETE) {
+                current_bitset.reset(event.row_id);
             }
         }
         if(i % step_size == 0) {
@@ -37,23 +37,13 @@ std::pair<version, checkpoint> TimelineIndex::find_nearest_checkpoint(version qu
         throw std::invalid_argument("Version does not exist");
     }
 
-    // binary search
-    uint64_t left = 0;
-    uint64_t right = checkpoints.size() - 1;
-    uint64_t middle = (left + right) / 2;
+    std::pair search_val{query_version, boost::dynamic_bitset<>()};
 
-    while (left < right) {
-        if (checkpoints[middle].first < query_version) {
-            left = middle + 1;
-        } else if (checkpoints[middle].first > query_version) {
-            right = middle - 1;
-        } else {
-            return checkpoints[middle];
-        }
-        middle = (left + right) / 2;
-    }
+    auto it = std::upper_bound(checkpoints.begin(), checkpoints.end(), search_val,
+        [](auto x, auto y) -> bool {return x.first < y.first;});
+    --it;
 
-    return checkpoints[middle];
+    return *it;
 }
 
 std::vector<Tuple> TimelineIndex::time_travel(uint32_t version) {
@@ -63,10 +53,10 @@ std::vector<Tuple> TimelineIndex::time_travel(uint32_t version) {
 
     auto events = version_map.get_events(last_checkpoint_version + 1, version + 1);
     for(auto& event : events) {
-        if(event.second == EventType::INSERT) {
-            bitset.set(event.first);
-        } else if(event.second == EventType::DELETE) {
-            bitset.reset(event.first);
+        if(event.type == EventType::INSERT) {
+            bitset.set(event.row_id);
+        } else if(event.type == EventType::DELETE) {
+            bitset.reset(event.row_id);
         }
     }
 
@@ -81,10 +71,10 @@ std::vector<uint64_t> TimelineIndex::temporal_sum(uint16_t index) {
     for(int i=0; i<version_map.current_version; i++) {
         auto events = version_map.get_events(i);
         for(auto& event : events) {
-            if(event.second == EventType::INSERT) {
-                current_sum += table.tuples[event.first].first[index];
-            } else if(event.second == EventType::DELETE) {
-                current_sum -= table.tuples[event.first].first[index];
+            if(event.type == EventType::INSERT) {
+                current_sum += table.tuples[event.row_id].first[index];
+            } else if(event.type == EventType::DELETE) {
+                current_sum -= table.tuples[event.row_id].first[index];
             }
         }
         result.push_back(current_sum);
@@ -120,10 +110,10 @@ std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
         auto events = version_map.get_events(i);
         for(auto& event : events) {
 
-            auto inserting_value = table.tuples[event.first].first[index];
-            auto smallest_element = get_min_element(max_set);
+            auto inserting_value = table.tuples[event.row_id].first[index];
+            auto smallest_element = max_set.empty() ? 0 : get_min_element(max_set);
 
-            if(event.second == EventType::INSERT) {
+            if(event.type == EventType::INSERT) {
                 // get smallest element in descending multiset
 
                 if(max_set.size() < k) {
@@ -171,6 +161,5 @@ std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
 }
 
 TimelineIndex TimelineIndex::temporal_join(TimelineIndex other) {
-    // TODO implement
-    return TimelineIndex(table);
+
 }
