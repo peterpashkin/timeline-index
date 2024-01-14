@@ -13,6 +13,8 @@ find_package(Boost REQUIRED)
 include_directories(${Boost_INCLUDE_DIRS})
 
 add_executable(MyBoostProject main.cpp)
+add_compile_options("-O0")
+add_compile_options("-DNDEBUG")
 
 target_link_libraries(MyBoostProject ${Boost_LIBRARIES})
 

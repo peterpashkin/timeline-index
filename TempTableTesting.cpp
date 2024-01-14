@@ -45,3 +45,7 @@ std::vector<uint64_t> TemporalTable::temporal_max(uint16_t index) {
     }
     return result;
 }
+
+TemporalTable TemporalTable::temporal_join(TemporalTable&other) {
+
+}

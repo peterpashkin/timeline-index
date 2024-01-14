@@ -6,12 +6,18 @@
 #include "VersionMap.h"
 #include "TemporalTable.h"
 #include <boost/dynamic_bitset.hpp>
+#include <unordered_set>
 
 #ifndef TIMELINEINDEX_TIMELINEINDEX_H
 #define TIMELINEINDEX_TIMELINEINDEX_H
 
 typedef boost::dynamic_bitset<> checkpoint;
 typedef uint32_t version;
+
+struct Intersection {
+    std::unordered_set<uint32_t> row_ids_A;
+    std::unordered_set<uint32_t> row_ids_B;
+};
 
 /**
  * @brief TimelineIndex class
@@ -20,6 +26,7 @@ typedef uint32_t version;
  */
 class TimelineIndex {
     TemporalTable& table;
+    TemporalTable& joined_table;
     VersionMap version_map;
     std::vector<std::pair<version, checkpoint>> checkpoints;
     const uint64_t temporal_table_size;
@@ -28,6 +35,8 @@ class TimelineIndex {
 
 public:
     explicit TimelineIndex(TemporalTable& table);
+    explicit TimelineIndex(TemporalTable& table, TemporalTable& joined_table);
+    void append_version(std::vector<Event>& events);
     std::vector<Tuple> time_travel(version query_version);
 
     //TODO might consider lambda functions for general purpose aggregation

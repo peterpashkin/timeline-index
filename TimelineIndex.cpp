@@ -7,7 +7,7 @@
 #include <set>
 
 
-TimelineIndex::TimelineIndex(TemporalTable& given_table) : table(given_table), temporal_table_size(given_table.get_table_size()) {
+TimelineIndex::TimelineIndex(TemporalTable& given_table) : table(given_table), temporal_table_size(given_table.get_table_size()), joined_table(given_table) {
     version_map = VersionMap(given_table);
 
     // for now checkpoints we will create 100 checkpoints
@@ -30,6 +30,11 @@ TimelineIndex::TimelineIndex(TemporalTable& given_table) : table(given_table), t
 
 }
 
+TimelineIndex::TimelineIndex(TemporalTable& given_table, TemporalTable& given_joined_table) : table(joined_table), joined_table(given_joined_table), temporal_table_size(42), version_map() {}
+
+void TimelineIndex::append_version(std::vector<Event>& events) {
+    version_map.register_version(events);
+}
 
 
 std::pair<version, checkpoint> TimelineIndex::find_nearest_checkpoint(version query_version) {
@@ -91,12 +96,25 @@ uint64_t get_min_element(const std::multiset<uint64_t, std::greater<>>& max_set)
     return *max_set.rbegin();
 }
 
+bool is_in_vector(std::vector<uint64_t>& inserted_values, uint32_t value) {
+    bool result = false;
+    for(auto& inserted_value : inserted_values) {
+        if(inserted_value == value) {
+            result = true;
+            break;
+        }
+    }
+    return result;
+}
 
+
+// TODO bug is: if we delete an element, there is a free space in the multiset, now after the next insert that might be extremely small
+// we will basically forget the elements that are new_smallest < x < old_smallest
 std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
     std::vector<uint64_t> result;
     std::multiset<uint64_t, std::greater<>> max_set;
     // TODO play with k
-    uint16_t k = 100;
+    uint16_t k = 1000;
 
     // generally the next two vectors are mostly irrelevant.
     // our assumption is that the values are mostly taken from the max_set
@@ -116,17 +134,30 @@ std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
             if(event.type == EventType::INSERT) {
                 // get smallest element in descending multiset
 
-                if(max_set.size() < k) {
+                if(max_set.empty()) {
                     max_set.insert(inserting_value);
                 } else if(inserting_value > smallest_element) {
-                    // TODO i think it's easier to return an iterator
-                    max_set.erase(max_set.find(smallest_element));
+                    if(max_set.size() >= k) {
+                        max_set.erase(max_set.find(smallest_element));
+                        inserted_values.push_back(smallest_element);
+                    }
                     max_set.insert(inserting_value);
                 } else {
                     inserted_values.push_back(inserting_value);
                 }
             } else {
+                if(inserting_value >= smallest_element) {
+                    // erase from multiset
+                    max_set.erase(max_set.find(inserting_value));
+                } else {
+                    #ifndef NDEBUG
+                    assert(is_in_vector(inserted_values, inserting_value));
+                    #endif
+                    deleted_values.push_back(inserting_value);
+                }
+
                 if(max_set.empty()) {
+                    std::cout << "very slow :c" << std::endl;
                     // construct a new multiset from inserting values and deleted values
                     // we will achieve this by sorting the vectors and then merging them
                     std::sort(inserted_values.begin(), inserted_values.end());
@@ -145,12 +176,6 @@ std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
                         }
                     }
                 }
-                if(inserting_value >= smallest_element) {
-                    // erase from multi_set
-                    max_set.erase(max_set.find(inserting_value));
-                } else {
-                    deleted_values.push_back(inserting_value);
-                }
             }
         }
         if(max_set.empty()) result.push_back(0);
@@ -161,5 +186,65 @@ std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
 }
 
 TimelineIndex TimelineIndex::temporal_join(TimelineIndex other) {
+    std::unordered_map<uint64_t, Intersection> intersection_map;
+    TimelineIndex result(table, other.table);
 
+    uint32_t new_latest_version = std::max(version_map.current_version, other.version_map.current_version);
+    for(uint32_t i=0; i<new_latest_version; i++) {
+        std::vector<Event> version_events;
+        auto events_for_a = version_map.get_events(i);
+        auto events_for_b = other.version_map.get_events(i);
+
+        // iterate through events of a, only apply deletions at first
+        for(auto& event : events_for_a) {
+            uint64_t associated_value = table.tuples[event.row_id].first[0];
+            if(event.type == EventType::DELETE) {
+                auto& intersection = intersection_map[associated_value];
+                intersection.row_ids_A.erase(event.row_id);
+                for(auto& row_id_B : intersection.row_ids_B) {
+                    version_events.emplace_back(Event(event.row_id, row_id_B, EventType::DELETE));
+                }
+            }
+        }
+
+        // same thing for events of b
+        for(auto& event : events_for_b) {
+            uint64_t associated_value = other.table.tuples[event.row_id].first[0];
+            if(event.type == EventType::DELETE) {
+                auto& intersection = intersection_map[associated_value];
+                intersection.row_ids_B.erase(event.row_id);
+                for(auto& row_id_A : intersection.row_ids_A) {
+                    version_events.emplace_back(Event(row_id_A, event.row_id, EventType::DELETE));
+                }
+            }
+        }
+
+        // now we can apply insertions in the same order
+        for(auto& event : events_for_a) {
+            uint64_t associated_value = table.tuples[event.row_id].first[0];
+            if(event.type == EventType::INSERT) {
+                auto& intersection = intersection_map[associated_value];
+                intersection.row_ids_A.insert(event.row_id);
+                for(auto& row_id_B : intersection.row_ids_B) {
+                    version_events.emplace_back(Event(event.row_id, row_id_B, EventType::INSERT));
+                }
+            }
+        }
+
+        // same for b
+        for(auto& event : events_for_b) {
+            uint64_t associated_value = other.table.tuples[event.row_id].first[0];
+            if(event.type == EventType::INSERT) {
+                auto& intersection = intersection_map[associated_value];
+                intersection.row_ids_B.insert(event.row_id);
+                for(auto& row_id_A : intersection.row_ids_A) {
+                    version_events.emplace_back(Event(row_id_A, event.row_id, EventType::INSERT));
+                }
+            }
+        }
+
+        result.append_version(version_events);
+    }
+
+    return result;
 }

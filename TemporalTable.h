@@ -61,6 +61,7 @@ public:
     std::vector<Tuple> time_travel(uint32_t query_version);
     std::vector<uint64_t> temporal_sum(uint16_t index);
     std::vector<uint64_t> temporal_max(uint16_t index);
+    TemporalTable temporal_join(TemporalTable& other);
 
 };
 

@@ -41,6 +41,8 @@ std::span<Event> VersionMap::get_events(uint32_t version) {
 
 std::span<Event> VersionMap::get_events(uint32_t start_version, uint32_t end_version) {
     if(start_version >= versions.size() || end_version >= versions.size()) {
+        // we will allow this case and return no events
+        return {};
         throw std::invalid_argument("Version does not exist");
     }
 
