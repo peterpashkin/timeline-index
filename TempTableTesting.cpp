@@ -46,6 +46,37 @@ std::vector<uint64_t> TemporalTable::temporal_max(uint16_t index) {
     return result;
 }
 
-TemporalTable TemporalTable::temporal_join(TemporalTable&other) {
+TemporalTable TemporalTable::temporal_join(TemporalTable&other, uint16_t index) {
+    // literally slowest algo ever O(n*m)
 
+    TemporalTable result;
+    uint64_t n = tuples.size();
+    uint64_t m = other.tuples.size();
+
+    for(auto [tuple_a, lifespan_a] : tuples) {
+        for(auto [tuple_b, lifespan_b] : other.tuples) {
+            if(tuple_a[index] == tuple_b[index]) {
+                uint32_t new_start = std::max(lifespan_a.start, lifespan_b.start);
+                std::optional<uint32_t> new_end;
+                if(lifespan_a.end.has_value() && lifespan_b.end.has_value()) {
+                    new_end = std::min(lifespan_a.end.value(), lifespan_b.end.value());
+                } else if(lifespan_a.end.has_value()) {
+                    new_end = lifespan_a.end;
+                } else if(lifespan_b.end.has_value()) {
+                    new_end = lifespan_b.end;
+                } else {
+                    new_end = std::nullopt;
+                }
+
+                if(new_end.has_value() && new_end.value() <= new_start) {
+                    continue;
+                } else {
+                    result.tuples.emplace_back(tuple_a, LifeSpan{new_start, new_end});
+                }
+            }
+        }
+    }
+
+    result.next_version = std::max(next_version, other.next_version);
+    return result;
 }

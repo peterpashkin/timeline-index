@@ -4,7 +4,7 @@
 #include "TemporalTable.h"
 #include "TimelineIndex.h"
 
-#define TEMPORAL_TABLE_SIZE 2'20'000
+#define TEMPORAL_TABLE_SIZE 2'200'000
 
 int main() {
     // testing
@@ -25,6 +25,24 @@ int main() {
     std::cout << "Temporal Table constructed" << std::endl;
 
     table.next_version = TEMPORAL_TABLE_SIZE + 5;
+
+
+    TemporalTable table2;
+    table2.tuples.reserve(TEMPORAL_TABLE_SIZE);
+    for(uint32_t i=0; i<TEMPORAL_TABLE_SIZE; i++) {
+        Tuple tuple{std::rand() % 101ll};
+        uint32_t first_version = std::rand() % (TEMPORAL_TABLE_SIZE - 1000) + 1;
+        uint32_t second_version = (std::rand() % std::min(TEMPORAL_TABLE_SIZE - first_version - 100, 100u)) + first_version + 2;
+        LifeSpan lifespan{first_version, second_version};
+        if(i%100 == 0) lifespan.end = std::nullopt;
+        table2.tuples.emplace_back(tuple, lifespan);
+    }
+
+    table2.next_version = TEMPORAL_TABLE_SIZE + 5;
+    TimelineIndex index2(table2);
+
+
+    // BENCHMARKING
 
 
     auto start = std::chrono::high_resolution_clock::now();
@@ -59,29 +77,34 @@ int main() {
     std::cout << std::chrono::duration_cast<std::chrono::microseconds>(end-start).count() << std::endl;
     std::cout << "Temporal Max benchmark finished" << std::endl;
 
-    TemporalTable table2;
-    table2.tuples.reserve(TEMPORAL_TABLE_SIZE);
-    for(uint32_t i=0; i<TEMPORAL_TABLE_SIZE; i++) {
-        Tuple tuple{std::rand() % 101ll};
-        uint32_t first_version = std::rand() % (TEMPORAL_TABLE_SIZE - 1000) + 1;
-        uint32_t second_version = (std::rand() % std::min(TEMPORAL_TABLE_SIZE - first_version - 100, 100u)) + first_version + 2;
-        LifeSpan lifespan{first_version, second_version};
-        if(i%100 == 0) lifespan.end = std::nullopt;
-        table2.tuples.emplace_back(tuple, lifespan);
-    }
 
-    table2.next_version = TEMPORAL_TABLE_SIZE + 5;
-    TimelineIndex index2(table2);
 
     start = std::chrono::high_resolution_clock::now();
-    auto x = index.temporal_join(index2);
+    //auto x = index.temporal_join(index2);
     end = std::chrono::high_resolution_clock::now();
 
     std::cout << std::chrono::duration_cast<std::chrono::microseconds>(end-start).count() << std::endl;
     std::cout << "Temporal Join finished" << std::endl;
 
+
+
     return 0;
+    auto x = index.temporal_join(index2);
+
+
+    TemporalTable join_table = table.temporal_join(table2, 0);
+    std::cout << "naive join finished" << std::endl;
+
+    for(int i=0; i<10'00; i++) {
+        auto correct_travel = join_table.time_travel(i);
+        auto index_travel = x.time_travel(i);
+
+        assert(correct_travel == index_travel);
+    }
+
     // testing time_travel
+
+
 
     for(int i=0; i<1'000; i++) {
         auto correct_travel = table.time_travel(i);

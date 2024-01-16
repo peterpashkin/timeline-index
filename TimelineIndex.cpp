@@ -30,7 +30,7 @@ TimelineIndex::TimelineIndex(TemporalTable& given_table) : table(given_table), t
 
 }
 
-TimelineIndex::TimelineIndex(TemporalTable& given_table, TemporalTable& given_joined_table) : table(joined_table), joined_table(given_joined_table), temporal_table_size(42), version_map() {}
+TimelineIndex::TimelineIndex(TemporalTable& given_table, TemporalTable& given_joined_table) : table(given_table), joined_table(given_joined_table), temporal_table_size(joined_table.get_table_size()), version_map() {}
 
 void TimelineIndex::append_version(std::vector<Event>& events) {
     version_map.register_version(events);
@@ -38,6 +38,10 @@ void TimelineIndex::append_version(std::vector<Event>& events) {
 
 
 std::pair<version, checkpoint> TimelineIndex::find_nearest_checkpoint(version query_version) {
+    if(checkpoints.empty()) {
+        // used for joined index
+        return {0, boost::dynamic_bitset<>(temporal_table_size, 0)};
+    }
     if (query_version < checkpoints[0].first) {
         throw std::invalid_argument("Version does not exist");
     }
@@ -114,7 +118,7 @@ std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
     std::vector<uint64_t> result;
     std::multiset<uint64_t, std::greater<>> max_set;
     // TODO play with k
-    uint16_t k = 1000;
+    const uint16_t k = 8000;
 
     // generally the next two vectors are mostly irrelevant.
     // our assumption is that the values are mostly taken from the max_set
@@ -124,6 +128,7 @@ std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
     // use unordered_map ??
     std::vector<uint64_t> deleted_values;
 
+    bool fill_up = true;
     for(int i=0; i<version_map.current_version; i++) {
         auto events = version_map.get_events(i);
         for(auto& event : events) {
@@ -134,8 +139,9 @@ std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
             if(event.type == EventType::INSERT) {
                 // get smallest element in descending multiset
 
-                if(max_set.empty()) {
+                if(fill_up || max_set.empty()) {
                     max_set.insert(inserting_value);
+                    if(max_set.size() >= k) fill_up = false;
                 } else if(inserting_value > smallest_element) {
                     if(max_set.size() >= k) {
                         max_set.erase(max_set.find(smallest_element));
@@ -175,6 +181,7 @@ std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
                             ++second_r_it;
                         }
                     }
+                    if(max_set.size() < k) fill_up = true;
                 }
             }
         }
@@ -186,6 +193,8 @@ std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
 }
 
 TimelineIndex TimelineIndex::temporal_join(TimelineIndex other) {
+    //TODO init checkpoints for returning index (not sure if needed tbh)
+
     std::unordered_map<uint64_t, Intersection> intersection_map;
     TimelineIndex result(table, other.table);
 
@@ -195,51 +204,54 @@ TimelineIndex TimelineIndex::temporal_join(TimelineIndex other) {
         auto events_for_a = version_map.get_events(i);
         auto events_for_b = other.version_map.get_events(i);
 
+        std::vector<uint32_t> a_insertions;
+        std::vector<uint32_t> b_insertions;
+
         // iterate through events of a, only apply deletions at first
         for(auto& event : events_for_a) {
-            uint64_t associated_value = table.tuples[event.row_id].first[0];
             if(event.type == EventType::DELETE) {
+                uint64_t associated_value = table.tuples[event.row_id].first[0];
                 auto& intersection = intersection_map[associated_value];
                 intersection.row_ids_A.erase(event.row_id);
                 for(auto& row_id_B : intersection.row_ids_B) {
                     version_events.emplace_back(Event(event.row_id, row_id_B, EventType::DELETE));
                 }
+            } else {
+                a_insertions.push_back(event.row_id);
             }
         }
 
         // same thing for events of b
         for(auto& event : events_for_b) {
-            uint64_t associated_value = other.table.tuples[event.row_id].first[0];
             if(event.type == EventType::DELETE) {
+                uint64_t associated_value = other.table.tuples[event.row_id].first[0];
                 auto& intersection = intersection_map[associated_value];
                 intersection.row_ids_B.erase(event.row_id);
                 for(auto& row_id_A : intersection.row_ids_A) {
                     version_events.emplace_back(Event(row_id_A, event.row_id, EventType::DELETE));
                 }
+            } else {
+                b_insertions.push_back(event.row_id);
             }
         }
 
         // now we can apply insertions in the same order
-        for(auto& event : events_for_a) {
-            uint64_t associated_value = table.tuples[event.row_id].first[0];
-            if(event.type == EventType::INSERT) {
-                auto& intersection = intersection_map[associated_value];
-                intersection.row_ids_A.insert(event.row_id);
-                for(auto& row_id_B : intersection.row_ids_B) {
-                    version_events.emplace_back(Event(event.row_id, row_id_B, EventType::INSERT));
-                }
+        for(auto& row_id : a_insertions) {
+            uint64_t associated_value = table.tuples[row_id].first[0];
+            auto& intersection = intersection_map[associated_value];
+            intersection.row_ids_A.insert(row_id);
+            for(auto& row_id_B : intersection.row_ids_B) {
+                version_events.emplace_back(Event(row_id, row_id_B, EventType::INSERT));
             }
         }
 
         // same for b
-        for(auto& event : events_for_b) {
-            uint64_t associated_value = other.table.tuples[event.row_id].first[0];
-            if(event.type == EventType::INSERT) {
-                auto& intersection = intersection_map[associated_value];
-                intersection.row_ids_B.insert(event.row_id);
-                for(auto& row_id_A : intersection.row_ids_A) {
-                    version_events.emplace_back(Event(row_id_A, event.row_id, EventType::INSERT));
-                }
+        for(auto& row_id : b_insertions) {
+            uint64_t associated_value = other.table.tuples[row_id].first[0];
+            auto& intersection = intersection_map[associated_value];
+            intersection.row_ids_B.insert(row_id);
+            for(auto& row_id_A : intersection.row_ids_A) {
+                version_events.emplace_back(Event(row_id_A, row_id, EventType::INSERT));
             }
         }
 
