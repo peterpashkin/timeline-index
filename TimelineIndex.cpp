@@ -114,19 +114,42 @@ bool is_in_vector(std::vector<uint64_t>& inserted_values, uint32_t value) {
 
 // TODO bug is: if we delete an element, there is a free space in the multiset, now after the next insert that might be extremely small
 // we will basically forget the elements that are new_smallest < x < old_smallest
+
+
+/* ------------------------------ BENCHMARKING ------------------------------
+ * N = 200k
+ * distinct = 101
+ * sorting approach:
+ * k = 15: 863319
+ * k = 50: 219045
+ * k = 100: 132.071 (2mil: 15.675.456)
+ * k = 1000: 55.162 (2mil: 1.314.958)
+ * k = 5000: (2mil: 642.517)
+ *
+ * unordered_map appraoch:
+ * k = 15: 50.477
+ * k = 50: 40.995
+ * k = 100: 62.505 (2mil: 602.403)
+ * k = 1000: 59.373 (2mil: 551.212)
+ * k = 5000: (2mil: 655.069)
+ *
+ *
+
+
+
+----------------------------------------------------------------------------*/
+
 std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
     std::vector<uint64_t> result;
     std::multiset<uint64_t, std::greater<>> max_set;
     // TODO play with k
-    const uint16_t k = 8000;
+    const uint16_t k = 1000;
 
     // generally the next two vectors are mostly irrelevant.
     // our assumption is that the values are mostly taken from the max_set
     // the vectors are only used if the multiset gets empty -> all values removed in a row, highly unlikely
 
-    std::vector<uint64_t> inserted_values;
-    // use unordered_map ??
-    std::vector<uint64_t> deleted_values;
+    std::unordered_map<uint64_t, uint32_t> irrelevant_values;
 
     bool fill_up = true;
     for(int i=0; i<version_map.current_version; i++) {
@@ -145,11 +168,11 @@ std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
                 } else if(inserting_value > smallest_element) {
                     if(max_set.size() >= k) {
                         max_set.erase(max_set.find(smallest_element));
-                        inserted_values.push_back(smallest_element);
+                        ++irrelevant_values[smallest_element];
                     }
                     max_set.insert(inserting_value);
                 } else {
-                    inserted_values.push_back(inserting_value);
+                    ++irrelevant_values[inserting_value];
                 }
             } else {
                 if(inserting_value >= smallest_element) {
@@ -159,29 +182,28 @@ std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
                     #ifndef NDEBUG
                     assert(is_in_vector(inserted_values, inserting_value));
                     #endif
-                    deleted_values.push_back(inserting_value);
+                    --irrelevant_values[inserting_value];
                 }
 
                 if(max_set.empty()) {
                     std::cout << "very slow :c" << std::endl;
                     // construct a new multiset from inserting values and deleted values
                     // we will achieve this by sorting the vectors and then merging them
-                    std::sort(inserted_values.begin(), inserted_values.end());
-                    std::sort(deleted_values.begin(), deleted_values.end());
 
-                    auto first_r_it = inserted_values.rbegin();
-                    auto second_r_it = deleted_values.rbegin();
-
-                    while(first_r_it != inserted_values.rend() && max_set.size() < k) {
-                        if(*first_r_it > *second_r_it) {
-                            max_set.insert(*first_r_it);
-                            ++first_r_it;
-                        } else {
-                            ++first_r_it;
-                            ++second_r_it;
+                    for(auto [key, amount] : irrelevant_values) {
+                        for(int cnt=0; cnt<amount; cnt++) {
+                            smallest_element = max_set.empty() ? 0 : get_min_element(max_set);
+                            if(smallest_element >= key) break;
+                            if(max_set.size() >= k) {
+                                max_set.erase(max_set.find(smallest_element));
+                                ++irrelevant_values[smallest_element];
+                            }
+                            max_set.insert(key);
+                            --irrelevant_values[key];
                         }
                     }
-                    if(max_set.size() < k) fill_up = true;
+
+
                 }
             }
         }

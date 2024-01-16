@@ -5,6 +5,7 @@
 #include "TimelineIndex.h"
 
 #define TEMPORAL_TABLE_SIZE 2'200'000
+#define DISTINCT_VALUES 200ull
 
 int main() {
     // testing
@@ -15,7 +16,7 @@ int main() {
 
     // fill the table with some data
     for(uint32_t i=0; i<TEMPORAL_TABLE_SIZE; i++) {
-        Tuple tuple{std::rand() % 101ll};
+        Tuple tuple{std::rand() % DISTINCT_VALUES};
         uint32_t first_version = std::rand() % (TEMPORAL_TABLE_SIZE - 1000) + 1;
         uint32_t second_version = (std::rand() % std::min(TEMPORAL_TABLE_SIZE - first_version - 100, 100u)) + first_version + 2;
         LifeSpan lifespan{first_version, second_version};
@@ -30,7 +31,7 @@ int main() {
     TemporalTable table2;
     table2.tuples.reserve(TEMPORAL_TABLE_SIZE);
     for(uint32_t i=0; i<TEMPORAL_TABLE_SIZE; i++) {
-        Tuple tuple{std::rand() % 101ll};
+        Tuple tuple{std::rand() % DISTINCT_VALUES};
         uint32_t first_version = std::rand() % (TEMPORAL_TABLE_SIZE - 1000) + 1;
         uint32_t second_version = (std::rand() % std::min(TEMPORAL_TABLE_SIZE - first_version - 100, 100u)) + first_version + 2;
         LifeSpan lifespan{first_version, second_version};
@@ -85,7 +86,6 @@ int main() {
 
     std::cout << std::chrono::duration_cast<std::chrono::microseconds>(end-start).count() << std::endl;
     std::cout << "Temporal Join finished" << std::endl;
-
 
 
     return 0;
