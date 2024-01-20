@@ -5,7 +5,7 @@
 #include "TimelineIndex.h"
 
 #define TEMPORAL_TABLE_SIZE 2'200'000
-#define DISTINCT_VALUES 200ull
+#define DISTINCT_VALUES 100'000ull
 
 int main() {
     // testing
@@ -81,7 +81,7 @@ int main() {
 
 
     start = std::chrono::high_resolution_clock::now();
-    //auto x = index.temporal_join(index2);
+    auto x = index.temporal_join(index2);
     end = std::chrono::high_resolution_clock::now();
 
     std::cout << std::chrono::duration_cast<std::chrono::microseconds>(end-start).count() << std::endl;
@@ -89,7 +89,7 @@ int main() {
 
 
     return 0;
-    auto x = index.temporal_join(index2);
+    //auto x = index.temporal_join(index2);
 
 
     TemporalTable join_table = table.temporal_join(table2, 0);

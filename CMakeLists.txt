@@ -29,4 +29,5 @@ add_executable(TimelineIndex main.cpp
         TemporalTable.cpp
         TempTableTesting.cpp
         EventListChildren.h
+        setup.cpp
 )

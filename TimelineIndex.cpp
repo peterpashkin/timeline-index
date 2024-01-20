@@ -136,7 +136,6 @@ bool is_in_vector(std::vector<uint64_t>& inserted_values, uint32_t value) {
  *
 
 
-
 ----------------------------------------------------------------------------*/
 
 std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
@@ -150,6 +149,8 @@ std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
     // the vectors are only used if the multiset gets empty -> all values removed in a row, highly unlikely
 
     std::unordered_map<uint64_t, uint32_t> irrelevant_values;
+    // TODO could be estimated better (kinda doesn't help)
+    irrelevant_values.reserve(5'000'000);
 
     bool fill_up = true;
     for(int i=0; i<version_map.current_version; i++) {
