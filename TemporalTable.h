@@ -5,7 +5,8 @@
 #pragma once
 #include <vector>
 #include <span>
-#include <boost/dynamic_bitset.hpp>
+#include <optional>
+#include "dynamic_bitset.h"
 
 #ifndef TIMELINEINDEX_TEMPORALTABLE_H
 #define TIMELINEINDEX_TEMPORALTABLE_H
@@ -48,7 +49,7 @@ public:
      * @param bitset
      * @return
      */
-    std::vector<Tuple> get_tuples(boost::dynamic_bitset<> bitset);
+    std::vector<Tuple> get_tuples(dynamic_bitset bitset);
 
     /**
      *

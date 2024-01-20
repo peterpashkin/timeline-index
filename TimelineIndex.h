@@ -5,13 +5,13 @@
 #include "EventList.h"
 #include "VersionMap.h"
 #include "TemporalTable.h"
-#include <boost/dynamic_bitset.hpp>
 #include <unordered_set>
+#include <unordered_map>
 
 #ifndef TIMELINEINDEX_TIMELINEINDEX_H
 #define TIMELINEINDEX_TIMELINEINDEX_H
 
-typedef boost::dynamic_bitset<> checkpoint;
+typedef dynamic_bitset checkpoint;
 typedef uint32_t version;
 
 struct Intersection {

@@ -12,7 +12,7 @@ TimelineIndex::TimelineIndex(TemporalTable& given_table) : table(given_table), t
 
     // for now checkpoints we will create 100 checkpoints
     uint32_t step_size = std::max(given_table.next_version / 100, 1u);
-    boost::dynamic_bitset<> current_bitset(temporal_table_size, 0);
+    dynamic_bitset current_bitset(temporal_table_size);
 
     for(int i=0; i<given_table.next_version; i++) {
         auto events = version_map.get_events(i);
@@ -40,13 +40,13 @@ void TimelineIndex::append_version(std::vector<Event>& events) {
 std::pair<version, checkpoint> TimelineIndex::find_nearest_checkpoint(version query_version) {
     if(checkpoints.empty()) {
         // used for joined index
-        return {0, boost::dynamic_bitset<>(temporal_table_size, 0)};
+        return {0, dynamic_bitset(temporal_table_size)};
     }
     if (query_version < checkpoints[0].first) {
         throw std::invalid_argument("Version does not exist");
     }
 
-    std::pair search_val{query_version, boost::dynamic_bitset<>()};
+    std::pair search_val{query_version, dynamic_bitset(0)};
 
     auto it = std::upper_bound(checkpoints.begin(), checkpoints.end(), search_val,
         [](auto x, auto y) -> bool {return x.first < y.first;});

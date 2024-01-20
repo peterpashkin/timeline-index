@@ -3,20 +3,9 @@ project(TimelineIndex)
 
 set(CMAKE_CXX_STANDARD 23)
 
-set(Boost_USE_STATIC_LIBS OFF)
-set(Boost_USE_MULTITHREADED ON)
-set(Boost_USE_STATIC_RUNTIME OFF)
-find_package(Boost 1.45.0 COMPONENTS *boost libraries here*)
 
-find_package(Boost REQUIRED)
-
-include_directories(${Boost_INCLUDE_DIRS})
-
-add_executable(MyBoostProject main.cpp)
 add_compile_options("-O3")
 add_compile_options("-DNDEBUG")
-
-target_link_libraries(MyBoostProject ${Boost_LIBRARIES})
 
 add_executable(TimelineIndex main.cpp
         TimelineIndex.h
@@ -30,4 +19,6 @@ add_executable(TimelineIndex main.cpp
         TempTableTesting.cpp
         EventListChildren.h
         setup.cpp
+        dynamic_bitset.cpp
+        dynamic_bitset.h
 )

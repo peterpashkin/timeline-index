@@ -3,6 +3,7 @@
 
 #include "TemporalTable.h"
 #include "TimelineIndex.h"
+#include <assert.h>
 
 #define TEMPORAL_TABLE_SIZE 2'200'000
 #define DISTINCT_VALUES 100'000ull
