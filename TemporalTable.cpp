@@ -5,6 +5,10 @@
 #include "dynamic_bitset.h"
 
 
+TemporalTable::TemporalTable(uint32_t version_number, uint64_t tuples_size) : next_version(version_number) {
+    tuples.reserve(tuples_size);
+}
+
 uint64_t TemporalTable::get_table_size() {
     return tuples.size();
 }

@@ -3,7 +3,7 @@
 //
 
 #include "TimelineIndex.h"
-
+#include <assert.h>
 #include <set>
 
 
@@ -180,9 +180,6 @@ std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
                     // erase from multiset
                     max_set.erase(max_set.find(inserting_value));
                 } else {
-                    #ifndef NDEBUG
-                    assert(is_in_vector(inserted_values, inserting_value));
-                    #endif
                     --irrelevant_values[inserting_value];
                 }
 

@@ -49,7 +49,7 @@ std::vector<uint64_t> TemporalTable::temporal_max(uint16_t index) {
 TemporalTable TemporalTable::temporal_join(TemporalTable&other, uint16_t index) {
     // literally slowest algo ever O(n*m)
 
-    TemporalTable result;
+    TemporalTable result(std::max(next_version, other.next_version), 0);
     uint64_t n = tuples.size();
     uint64_t m = other.tuples.size();
 
@@ -70,13 +70,12 @@ TemporalTable TemporalTable::temporal_join(TemporalTable&other, uint16_t index) 
 
                 if(new_end.has_value() && new_end.value() <= new_start) {
                     continue;
-                } else {
-                    result.tuples.emplace_back(tuple_a, LifeSpan{new_start, new_end});
                 }
+
+                result.tuples.emplace_back(tuple_a, LifeSpan{new_start, new_end});
             }
         }
     }
 
-    result.next_version = std::max(next_version, other.next_version);
     return result;
 }

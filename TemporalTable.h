@@ -35,12 +35,15 @@ class TemporalTable {
 public:
     uint32_t next_version;
 
+
     /**
      * @brief Tuples
      * @details This vector contains all the tuples in the table
      * and their lifespan
      */
     std::vector<std::pair<Tuple, LifeSpan>> tuples;
+
+    TemporalTable(uint32_t version_number, uint64_t tuples_size);
 
     uint64_t get_table_size();
 

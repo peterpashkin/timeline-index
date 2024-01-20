@@ -5,9 +5,12 @@ set(CMAKE_CXX_STANDARD 23)
 
 
 add_compile_options("-O3")
-add_compile_options("-DNDEBUG")
+#add_compile_options("-DDEBUG")
+add_compile_options("-DBENCHMARK")
 
-add_executable(TimelineIndex main.cpp
+
+
+add_executable(TimelineIndex
         TimelineIndex.h
         VersionMap.h
         EventList.h
@@ -18,7 +21,7 @@ add_executable(TimelineIndex main.cpp
         TemporalTable.cpp
         TempTableTesting.cpp
         EventListChildren.h
-        setup.cpp
+        main.cpp
         dynamic_bitset.cpp
         dynamic_bitset.h
 )

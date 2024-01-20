@@ -1,136 +1,158 @@
-#include <iostream>
-#include <chrono>
+//
+// Created by pedda on 20-1-24.
+//
+#pragma once
 
 #include "TemporalTable.h"
 #include "TimelineIndex.h"
+#include <iostream>
+#include <chrono>
+#include <random>
 #include <assert.h>
 
 #define TEMPORAL_TABLE_SIZE 2'200'000
 #define DISTINCT_VALUES 100'000ull
+#define LIFETIME 10000 // determines how long a tuple lives, implicitly also determines the number of tuples that are still active
+#define NUMBER_OF_VERSIONS 2'200'000
+#define ITERATIONS 1000
 
-int main() {
-    // testing
-    TemporalTable table;
-    std::srand(420);
 
-    table.tuples.reserve(TEMPORAL_TABLE_SIZE);
+LifeSpan generate_life_span() {
+    uint32_t start = std::rand() % (NUMBER_OF_VERSIONS-1);
+    uint32_t life_span = std::rand() % LIFETIME + 1;
+    uint32_t end = start + life_span;
 
-    // fill the table with some data
-    for(uint32_t i=0; i<TEMPORAL_TABLE_SIZE; i++) {
-        Tuple tuple{std::rand() % DISTINCT_VALUES};
-        uint32_t first_version = std::rand() % (TEMPORAL_TABLE_SIZE - 1000) + 1;
-        uint32_t second_version = (std::rand() % std::min(TEMPORAL_TABLE_SIZE - first_version - 100, 100u)) + first_version + 2;
-        LifeSpan lifespan{first_version, second_version};
-        if(i%100 == 0) lifespan.end = std::nullopt;
+    LifeSpan result{start, end};
+    if(end >= NUMBER_OF_VERSIONS) result.end = std::nullopt;
+
+    return result;
+}
+
+void init_temporal_table(TemporalTable& table) {
+    for (int i=0; i<TEMPORAL_TABLE_SIZE; i++) {
+        Tuple tuple{std::rand() % DISTINCT_VALUES + 1};
+        LifeSpan lifespan = generate_life_span();
         table.tuples.emplace_back(tuple, lifespan);
     }
-    std::cout << "Temporal Table constructed" << std::endl;
-
-    table.next_version = TEMPORAL_TABLE_SIZE + 5;
+}
 
 
-    TemporalTable table2;
-    table2.tuples.reserve(TEMPORAL_TABLE_SIZE);
-    for(uint32_t i=0; i<TEMPORAL_TABLE_SIZE; i++) {
-        Tuple tuple{std::rand() % DISTINCT_VALUES};
-        uint32_t first_version = std::rand() % (TEMPORAL_TABLE_SIZE - 1000) + 1;
-        uint32_t second_version = (std::rand() % std::min(TEMPORAL_TABLE_SIZE - first_version - 100, 100u)) + first_version + 2;
-        LifeSpan lifespan{first_version, second_version};
-        if(i%100 == 0) lifespan.end = std::nullopt;
-        table2.tuples.emplace_back(tuple, lifespan);
-    }
+int main() {
+    std::srand(420);
+    TemporalTable main_table(NUMBER_OF_VERSIONS, TEMPORAL_TABLE_SIZE);
+    TemporalTable second_table(NUMBER_OF_VERSIONS, TEMPORAL_TABLE_SIZE);
 
-    table2.next_version = TEMPORAL_TABLE_SIZE + 5;
-    TimelineIndex index2(table2);
+    init_temporal_table(main_table);
+    init_temporal_table(second_table);
 
 
-    // BENCHMARKING
 
+// ------------------ Benchmarking Construction -------------------
 
+#ifdef BENCHMARK
     auto start = std::chrono::high_resolution_clock::now();
-    TimelineIndex index(table);
+#endif
+    TimelineIndex index(main_table);
+    TimelineIndex index2(second_table);
+#ifdef BENCHMARK
     auto end = std::chrono::high_resolution_clock::now();
     std::cout << "Construction finished" << std::endl;
 
-    std::cout << std::chrono::duration_cast<std::chrono::microseconds>(end-start).count() << std::endl;
+    std::cout << std::chrono::duration_cast<std::chrono::microseconds>(end-start).count()/2 << std::endl;
+#endif
 
-    for(int i=0; i<10; i++) {
-        auto traveling_version = i * TEMPORAL_TABLE_SIZE/10;
+// ----------------------------------------------------------------
+
+
+
+// ------------------ Benchmarking Time Travel --------------------
+
+#ifdef BENCHMARK
+    uint64_t sum = 0;
+#endif
+
+    for(int i=0; i<ITERATIONS; i++) {
+        auto traveling_version = i * NUMBER_OF_VERSIONS/ITERATIONS;
+#ifdef BENCHMARK
         start = std::chrono::high_resolution_clock::now();
-        index.time_travel(traveling_version);
+#endif
+        auto index_travel = index.time_travel(traveling_version);
+#ifdef BENCHMARK
         end = std::chrono::high_resolution_clock::now();
-        std::cout << std::chrono::duration_cast<std::chrono::microseconds>(end-start).count() << std::endl;
+        sum += std::chrono::duration_cast<std::chrono::microseconds>(end-start).count();
+#endif
+
+#ifdef DEBUG // check if the results are correct
+        auto table_travel = main_table.time_travel(traveling_version);
+        assert(index_travel == table_travel);
+#endif
     }
 
+#ifdef BENCHMARK
     std::cout << "Time Travel benchmarking finished" << std::endl;
+    std::cout << sum/ITERATIONS << std::endl;
+#endif
 
+// ----------------------------------------------------------------
+
+
+
+//------------------ Benchmarking Temporal Sum --------------------
+#ifdef BENCHMARK
     start = std::chrono::high_resolution_clock::now();
-    auto index_sum1 = index.temporal_sum(0);
-    end = std::chrono::high_resolution_clock::now();
-
-    std::cout << std::chrono::duration_cast<std::chrono::microseconds>(end-start).count() << std::endl;
-
-    std::cout << "Temporal Sum benchmark finished" << std::endl;
-
-    start = std::chrono::high_resolution_clock::now();
-    auto index_max1 = index.temporal_max(0);
-    end = std::chrono::high_resolution_clock::now();
-
-    std::cout << std::chrono::duration_cast<std::chrono::microseconds>(end-start).count() << std::endl;
-    std::cout << "Temporal Max benchmark finished" << std::endl;
-
-
-
-    start = std::chrono::high_resolution_clock::now();
-    auto x = index.temporal_join(index2);
-    end = std::chrono::high_resolution_clock::now();
-
-    std::cout << std::chrono::duration_cast<std::chrono::microseconds>(end-start).count() << std::endl;
-    std::cout << "Temporal Join finished" << std::endl;
-
-
-    return 0;
-    //auto x = index.temporal_join(index2);
-
-
-    TemporalTable join_table = table.temporal_join(table2, 0);
-    std::cout << "naive join finished" << std::endl;
-
-    for(int i=0; i<10'00; i++) {
-        auto correct_travel = join_table.time_travel(i);
-        auto index_travel = x.time_travel(i);
-
-        assert(correct_travel == index_travel);
-    }
-
-    // testing time_travel
-
-
-
-    for(int i=0; i<1'000; i++) {
-        auto correct_travel = table.time_travel(i);
-        auto index_travel = index.time_travel(i);
-
-        assert(correct_travel == index_travel);
-    }
-
-    std::cout << "Time Travel finished" << std::endl;
-
+#endif
     auto index_sum = index.temporal_sum(0);
-    auto correct_sum = table.temporal_sum(0);
+#ifdef BENCHMARK
+    end = std::chrono::high_resolution_clock::now();
+    std::cout << "Temporal Sum benchmarking finished" << std::endl;
+    std::cout << std::chrono::duration_cast<std::chrono::microseconds>(end-start).count() << std::endl;
+#endif
+#ifdef DEBUG
+    auto table_sum = main_table.temporal_sum(0);
+    assert(index_sum == table_sum);
+#endif
+
+// ----------------------------------------------------------------
 
 
-    assert(correct_sum == index_sum);
 
-    std::cout << "Temporal Sum finished" << std::endl;
-
-    auto correct_max = table.temporal_max(0);
+// ------------------ Benchmarking Temporal Max --------------------
+#ifdef BENCHMARK
+    start = std::chrono::high_resolution_clock::now();
+#endif
     auto index_max = index.temporal_max(0);
+#ifdef BENCHMARK
+    end = std::chrono::high_resolution_clock::now();
+    std::cout << "Temporal Max benchmarking finished" << std::endl;
+    std::cout << std::chrono::duration_cast<std::chrono::microseconds>(end-start).count() << std::endl;
+#endif
+#ifdef DEBUG
+    auto table_max = main_table.temporal_max(0);
+    assert(index_max == table_max);
+#endif
 
-    assert(correct_max == index_max);
+// ----------------------------------------------------------------
 
 
-    std::cout << "All tests passed" << std::endl;
+
+// ------------------ Benchmarking Temporal Join --------------------
+#ifdef BENCHMARK
+    start = std::chrono::high_resolution_clock::now();
+#endif
+    auto index_join = index.temporal_join(index2);
+#ifdef BENCHMARK
+    end = std::chrono::high_resolution_clock::now();
+    std::cout << "Temporal Join benchmarking finished" << std::endl;
+    std::cout << std::chrono::duration_cast<std::chrono::microseconds>(end-start).count() << std::endl;
+#endif
+#ifdef DEBUG
+    auto table_join = main_table.temporal_join(second_table);
+    for(int i=0; iITERATIONS; i++) {
+        assert(index_join.time_travel(i) == table_join.time_travel(i));
+    }
+#endif
+
+// ----------------------------------------------------------------
 
 
 }
