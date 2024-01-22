@@ -5,9 +5,11 @@
 #include "TimelineIndex.h"
 #include <assert.h>
 #include <set>
+#include <thread>
 
 #define CHECKPOINT_AMOUNT 50
 #define TOP_K 100
+#define THREAD_AMOUNT 4
 
 TimelineIndex::TimelineIndex(TemporalTable& given_table) : table(given_table), temporal_table_size(given_table.get_table_size()), joined_table(given_table) {
     version_map = VersionMap(given_table);
@@ -98,12 +100,16 @@ std::vector<Tuple> TimelineIndex::time_travel(uint32_t version) {
 }
 #endif
 
-std::vector<uint64_t> TimelineIndex::temporal_sum(uint16_t index) {
-    uint64_t current_sum = 0;
-    std::vector<uint64_t> result;
 
-    // for each version apply all changes in sum and add to result
-    for(int i=0; i<version_map.current_version; i++) {
+void TimelineIndex::threading_sum(uint32_t starting_version, uint32_t ending_version, uint16_t index, std::vector<uint64_t>& sum) {
+    auto activated_tuples = time_travel(starting_version);
+    uint64_t current_sum = 0;
+    for(auto& tuples : activated_tuples) {
+        current_sum += tuples[index];
+    }
+    sum[starting_version] = current_sum;
+
+    for(int i=starting_version+1; i<ending_version; i++) {
         auto events = version_map.get_events(i);
         for(auto& event : events) {
             if(event.type == EventType::INSERT) {
@@ -112,8 +118,31 @@ std::vector<uint64_t> TimelineIndex::temporal_sum(uint16_t index) {
                 current_sum -= table.tuples[event.row_id].first[index];
             }
         }
-        result.push_back(current_sum);
+        sum[i] = current_sum;
     }
+}
+
+
+std::vector<uint64_t> TimelineIndex::temporal_sum(uint16_t index) {
+    std::vector<uint64_t> result(version_map.current_version, 0);
+
+    std::vector<std::thread> threads;
+    std::vector<ThreadSum> args;
+
+    uint32_t step_size = version_map.current_version / THREAD_AMOUNT;
+
+    for(uint32_t i=0; i<THREAD_AMOUNT; i++) {
+        uint32_t starting_version = i * step_size;
+        uint32_t ending_version = (i+1) * step_size;
+        args.emplace_back(ThreadSum{result, starting_version, ending_version, index});
+        std::thread thread(&TimelineIndex::threading_sum, this, starting_version, ending_version, index, std::ref(result));
+        threads.push_back(std::move(thread));
+    }
+
+    for(auto& thread : threads) {
+        thread.join();
+    }
+
 
     return result;
 }

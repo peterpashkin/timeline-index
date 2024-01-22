@@ -19,6 +19,13 @@ struct Intersection {
     std::unordered_set<uint32_t> row_ids_B;
 };
 
+struct ThreadSum {
+    std::vector<uint64_t>& sum;
+    uint32_t starting_version;
+    uint32_t ending_version;
+    uint16_t index;
+};
+
 /**
  * @brief TimelineIndex class
  * @details This class represents the TimelineIndex working on top of a const TemporalTable.
@@ -40,6 +47,7 @@ public:
     std::vector<Tuple> time_travel(version query_version);
 
 
+    void threading_sum(uint32_t starting_version, uint32_t ending_version, uint16_t index, std::vector<uint64_t>& sum);
     std::vector<uint64_t> temporal_sum(uint16_t index);
     std::vector<uint64_t> temporal_max(uint16_t index);
     TimelineIndex temporal_join(TimelineIndex other);
