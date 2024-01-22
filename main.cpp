@@ -8,13 +8,13 @@
 #include <iostream>
 #include <chrono>
 #include <random>
-#include <assert.h>
+#include <cassert>
 
 #define TEMPORAL_TABLE_SIZE 2'200'000
-#define DISTINCT_VALUES 100'000ull
-#define LIFETIME 10000 // determines how long a tuple lives, implicitly also determines the number of tuples that are still active
+#define DISTINCT_VALUES 101ull
+#define LIFETIME 1000 // determines how long a tuple lives, implicitly also determines the number of tuples that are still active
 #define NUMBER_OF_VERSIONS 2'200'000
-#define ITERATIONS 1000
+#define ITERATIONS 10000
 
 
 LifeSpan generate_life_span() {
@@ -146,8 +146,8 @@ int main() {
     std::cout << std::chrono::duration_cast<std::chrono::microseconds>(end-start).count() << std::endl;
 #endif
 #ifdef DEBUG
-    auto table_join = main_table.temporal_join(second_table);
-    for(int i=0; iITERATIONS; i++) {
+    auto table_join = main_table.temporal_join(second_table, 0);
+    for(int i=0; i<ITERATIONS; i++) {
         assert(index_join.time_travel(i) == table_join.time_travel(i));
     }
 #endif

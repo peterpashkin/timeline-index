@@ -7,6 +7,9 @@ set(CMAKE_CXX_STANDARD 23)
 add_compile_options("-O3")
 #add_compile_options("-DDEBUG")
 add_compile_options("-DBENCHMARK")
+#add_compile_options("-Wall")
+#add_compile_options("-Wextra")
+#add_compile_options("-DLEGACY")
 
 
 
@@ -20,8 +23,9 @@ add_executable(TimelineIndex
         TimelineIndex.cpp
         TemporalTable.cpp
         TempTableTesting.cpp
-        EventListChildren.h
         main.cpp
         dynamic_bitset.cpp
         dynamic_bitset.h
+        legacy_functions.cpp
+        legacy_functions.cpp
 )

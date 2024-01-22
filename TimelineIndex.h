@@ -39,11 +39,8 @@ public:
     void append_version(std::vector<Event>& events);
     std::vector<Tuple> time_travel(version query_version);
 
-    //TODO might consider lambda functions for general purpose aggregation
 
-    // index is a very basic indicator of what to aggregate
     std::vector<uint64_t> temporal_sum(uint16_t index);
-    std::vector<uint64_t> temporal_avg();
     std::vector<uint64_t> temporal_max(uint16_t index);
     TimelineIndex temporal_join(TimelineIndex other);
 

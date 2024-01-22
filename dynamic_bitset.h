@@ -12,7 +12,7 @@ class dynamic_bitset {
     uint64_t size;
     std::vector<uint64_t> data;
 public:
-    uint64_t set_bits;
+    uint64_t set_bits = 0;
     explicit dynamic_bitset(uint64_t size);
     void set(uint64_t index);
     void reset(uint64_t index);

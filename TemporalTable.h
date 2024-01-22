@@ -17,10 +17,8 @@
  * @brief Tuple class
  * @details This class represents a tuple from the Temporal Table, which is a vector of spans
  */
-
-// TODO: consider using a vector of spans instead of a vector of uint64_t
-// currently like this to make temporal aggregations more logical
 typedef std::vector<uint64_t> Tuple;
+
 struct LifeSpan {
     uint32_t start;
     // tuple might not have been deleted, then this value is None

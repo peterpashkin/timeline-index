@@ -18,7 +18,7 @@ std::vector<Tuple> TemporalTable::time_travel(uint32_t query_version) {
 std::vector<uint64_t> TemporalTable::temporal_sum(uint16_t index) {
     std::vector<uint64_t> result;
     // for each version check what tuples are currently in the version
-    for(int i=0; i<next_version; i++) {
+    for(uint32_t i=0; i<next_version; i++) {
         uint64_t current_sum = 0;
         for(auto& [tuple, lifespan] : tuples) {
             if(lifespan.start <= i && (!lifespan.end.has_value() || lifespan.end.value() > i)) {
@@ -34,7 +34,7 @@ std::vector<uint64_t> TemporalTable::temporal_max(uint16_t index) {
     // same thing as temporal_sum, but with max
     std::vector<uint64_t> result;
     // for each version check what tuples are currently in the version
-    for(int i=0; i<next_version; i++) {
+    for(uint32_t i=0; i<next_version; i++) {
         uint64_t current_max = 0;
         for(auto& tuple : tuples) {
             if(tuple.second.start <= i && (!tuple.second.end.has_value() || tuple.second.end.value() > i)) {
@@ -46,12 +46,11 @@ std::vector<uint64_t> TemporalTable::temporal_max(uint16_t index) {
     return result;
 }
 
+
 TemporalTable TemporalTable::temporal_join(TemporalTable&other, uint16_t index) {
     // literally slowest algo ever O(n*m)
 
     TemporalTable result(std::max(next_version, other.next_version), 0);
-    uint64_t n = tuples.size();
-    uint64_t m = other.tuples.size();
 
     for(auto [tuple_a, lifespan_a] : tuples) {
         for(auto [tuple_b, lifespan_b] : other.tuples) {

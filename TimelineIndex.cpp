@@ -6,12 +6,14 @@
 #include <assert.h>
 #include <set>
 
+#define CHECKPOINT_AMOUNT 50
+#define TOP_K 100
 
 TimelineIndex::TimelineIndex(TemporalTable& given_table) : table(given_table), temporal_table_size(given_table.get_table_size()), joined_table(given_table) {
     version_map = VersionMap(given_table);
 
     // for now checkpoints we will create 100 checkpoints
-    uint32_t step_size = std::max(given_table.next_version / 100, 1u);
+    uint32_t step_size = std::max(given_table.next_version / CHECKPOINT_AMOUNT, 1u);
     dynamic_bitset current_bitset(temporal_table_size);
 
     for(int i=0; i<given_table.next_version; i++) {
@@ -36,7 +38,7 @@ void TimelineIndex::append_version(std::vector<Event>& events) {
     version_map.register_version(events);
 }
 
-
+#ifndef LEGACY
 std::pair<version, checkpoint> TimelineIndex::find_nearest_checkpoint(version query_version) {
     if(checkpoints.empty()) {
         // used for joined index
@@ -50,27 +52,50 @@ std::pair<version, checkpoint> TimelineIndex::find_nearest_checkpoint(version qu
 
     auto it = std::upper_bound(checkpoints.begin(), checkpoints.end(), search_val,
         [](auto x, auto y) -> bool {return x.first < y.first;});
-    --it;
 
+
+
+    if(it != checkpoints.end()) {
+        int version1 = it->first;
+        int version2 = (it-1)->first;
+        if(version1 - query_version < query_version - version2) {
+            return *it;
+        } else {
+            return *(it-1);
+        }
+    }
+
+    --it;
     return *it;
 }
 
-std::vector<Tuple> TimelineIndex::time_travel(uint32_t version) {
-    auto last_checkpoint = find_nearest_checkpoint(version);
-    auto last_checkpoint_version = last_checkpoint.first;
-    auto bitset = last_checkpoint.second;
 
-    auto events = version_map.get_events(last_checkpoint_version + 1, version + 1);
-    for(auto& event : events) {
-        if(event.type == EventType::INSERT) {
-            bitset.set(event.row_id);
-        } else if(event.type == EventType::DELETE) {
-            bitset.reset(event.row_id);
+std::vector<Tuple> TimelineIndex::time_travel(uint32_t version) {
+    auto [nearest_checkpoint_version, bitset] = find_nearest_checkpoint(version);
+
+    if(nearest_checkpoint_version <= version) {
+        auto events = version_map.get_events(nearest_checkpoint_version + 1, version + 1);
+        for(auto& event : events) {
+            if(event.type == EventType::INSERT) {
+                bitset.set(event.row_id);
+            } else if(event.type == EventType::DELETE) {
+                bitset.reset(event.row_id);
+            }
+        }
+    } else {
+        auto events = version_map.get_events(version+1, nearest_checkpoint_version + 1);
+        for(auto& event : events) {
+            if(event.type == EventType::DELETE) {
+                bitset.set(event.row_id);
+            } else if(event.type == EventType::INSERT) {
+                bitset.reset(event.row_id);
+            }
         }
     }
 
     return table.get_tuples(bitset);
 }
+#endif
 
 std::vector<uint64_t> TimelineIndex::temporal_sum(uint16_t index) {
     uint64_t current_sum = 0;
@@ -112,9 +137,6 @@ bool is_in_vector(std::vector<uint64_t>& inserted_values, uint32_t value) {
 }
 
 
-// TODO bug is: if we delete an element, there is a free space in the multiset, now after the next insert that might be extremely small
-// we will basically forget the elements that are new_smallest < x < old_smallest
-
 
 /* ------------------------------ BENCHMARKING ------------------------------
  * N = 200k
@@ -138,18 +160,15 @@ bool is_in_vector(std::vector<uint64_t>& inserted_values, uint32_t value) {
 
 ----------------------------------------------------------------------------*/
 
+
+#ifndef LEGACY
 std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
     std::vector<uint64_t> result;
     std::multiset<uint64_t, std::greater<>> max_set;
-    // TODO play with k
-    const uint16_t k = 1000;
+    const uint16_t k = TOP_K;
 
-    // generally the next two vectors are mostly irrelevant.
-    // our assumption is that the values are mostly taken from the max_set
-    // the vectors are only used if the multiset gets empty -> all values removed in a row, highly unlikely
 
     std::unordered_map<uint64_t, uint32_t> irrelevant_values;
-    // TODO could be estimated better (kinda doesn't help)
     irrelevant_values.reserve(5'000'000);
 
     bool fill_up = true;
@@ -184,13 +203,16 @@ std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
                 }
 
                 if(max_set.empty()) {
-                    std::cout << "very slow :c" << std::endl;
-                    // construct a new multiset from inserting values and deleted values
-                    // we will achieve this by sorting the vectors and then merging them
-
+                    fill_up = true;
                     for(auto [key, amount] : irrelevant_values) {
                         for(int cnt=0; cnt<amount; cnt++) {
-                            smallest_element = max_set.empty() ? 0 : get_min_element(max_set);
+                            if(fill_up) {
+                                max_set.insert(key);
+                                --irrelevant_values[key];
+                                if(max_set.size() >= k) fill_up = false;
+                                continue;
+                            }
+                            smallest_element = get_min_element(max_set);
                             if(smallest_element >= key) break;
                             if(max_set.size() >= k) {
                                 max_set.erase(max_set.find(smallest_element));
@@ -211,10 +233,9 @@ std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
 
     return result;
 }
+#endif
 
 TimelineIndex TimelineIndex::temporal_join(TimelineIndex other) {
-    //TODO init checkpoints for returning index (not sure if needed tbh)
-
     std::unordered_map<uint64_t, Intersection> intersection_map;
     TimelineIndex result(table, other.table);
 
@@ -228,7 +249,7 @@ TimelineIndex TimelineIndex::temporal_join(TimelineIndex other) {
         std::vector<uint32_t> b_insertions;
 
         // iterate through events of a, only apply deletions at first
-        for(auto& event : events_for_a) {
+        for(const auto& event : events_for_a) {
             if(event.type == EventType::DELETE) {
                 uint64_t associated_value = table.tuples[event.row_id].first[0];
                 auto& intersection = intersection_map[associated_value];
@@ -242,7 +263,7 @@ TimelineIndex TimelineIndex::temporal_join(TimelineIndex other) {
         }
 
         // same thing for events of b
-        for(auto& event : events_for_b) {
+        for(const auto& event : events_for_b) {
             if(event.type == EventType::DELETE) {
                 uint64_t associated_value = other.table.tuples[event.row_id].first[0];
                 auto& intersection = intersection_map[associated_value];
@@ -256,7 +277,7 @@ TimelineIndex TimelineIndex::temporal_join(TimelineIndex other) {
         }
 
         // now we can apply insertions in the same order
-        for(auto& row_id : a_insertions) {
+        for(const auto row_id : a_insertions) {
             uint64_t associated_value = table.tuples[row_id].first[0];
             auto& intersection = intersection_map[associated_value];
             intersection.row_ids_A.insert(row_id);
@@ -266,7 +287,7 @@ TimelineIndex TimelineIndex::temporal_join(TimelineIndex other) {
         }
 
         // same for b
-        for(auto& row_id : b_insertions) {
+        for(const auto row_id : b_insertions) {
             uint64_t associated_value = other.table.tuples[row_id].first[0];
             auto& intersection = intersection_map[associated_value];
             intersection.row_ids_B.insert(row_id);
