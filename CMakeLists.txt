@@ -9,7 +9,7 @@ add_compile_options("-O3")
 add_compile_options("-DBENCHMARK")
 #add_compile_options("-Wall")
 #add_compile_options("-Wextra")
-#add_compile_options("-DLEGACY")
+add_compile_options("-DLEGACY")
 
 
 

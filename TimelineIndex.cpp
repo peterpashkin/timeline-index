@@ -84,11 +84,12 @@ std::vector<Tuple> TimelineIndex::time_travel(uint32_t version) {
         }
     } else {
         auto events = version_map.get_events(version+1, nearest_checkpoint_version + 1);
-        for(auto& event : events) {
-            if(event.type == EventType::DELETE) {
-                bitset.set(event.row_id);
-            } else if(event.type == EventType::INSERT) {
-                bitset.reset(event.row_id);
+        auto event = events.rbegin();
+        for(; event != events.rend(); ++event) {
+            if(event->type == EventType::DELETE) {
+                bitset.set(event->row_id);
+            } else if(event->type == EventType::INSERT) {
+                bitset.reset(event->row_id);
             }
         }
     }

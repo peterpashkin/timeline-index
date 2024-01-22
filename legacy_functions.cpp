@@ -16,7 +16,7 @@ uint64_t get_min_element_legacy(const std::multiset<uint64_t, std::greater<>>& m
 std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
     std::vector<uint64_t> result;
     std::multiset<uint64_t, std::greater<>> max_set;
-    uint16_t k = 100;
+    const uint16_t k = 100;
 
     // generally the next two vectors are mostly irrelevant.
     // our assumption is that the values are mostly taken from the max_set
@@ -26,6 +26,7 @@ std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
     // use unordered_map ??
     std::vector<uint64_t> deleted_values;
 
+    bool fill_up = true;
     for(int i=0; i<version_map.current_version; i++) {
         auto events = version_map.get_events(i);
         for(auto& event : events) {
@@ -36,8 +37,9 @@ std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
             if(event.type == EventType::INSERT) {
                 // get smallest element in descending multiset
 
-                if(max_set.empty()) {
+                if(fill_up || max_set.empty()) {
                     max_set.insert(inserting_value);
+                    if(max_set.size() >= k) fill_up = false;
                 } else if(inserting_value > smallest_element) {
                     if(max_set.size() >= k) {
                         max_set.erase(max_set.find(smallest_element));
@@ -56,7 +58,6 @@ std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
                 }
 
                 if(max_set.empty()) {
-                    //std::cout << "very slow :c" << std::endl;
                     // construct a new multiset from inserting values and deleted values
                     // we will achieve this by sorting the vectors and then merging them
                     std::sort(inserted_values.begin(), inserted_values.end());
@@ -83,6 +84,8 @@ std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
 
     return result;
 }
+
+
 
 // seems to be faster actually
 std::pair<version, checkpoint> TimelineIndex::find_nearest_checkpoint(version query_version) {

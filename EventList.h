@@ -21,6 +21,10 @@ struct Event {
     uint32_t row_id;
     uint32_t row_id_second = -1;
     EventType type;
+
+    // constructors as clang seems to not like implicit constructors
+    Event(uint32_t row_id, uint32_t row_id_second, EventType type) : row_id(row_id), row_id_second(row_id_second), type(type) {}
+    Event() = default;
 };
 
 /**
