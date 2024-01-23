@@ -49,6 +49,7 @@ public:
 
     void threading_sum(uint32_t starting_version, uint32_t ending_version, uint16_t index, std::vector<uint64_t>& sum);
     std::vector<uint64_t> temporal_sum(uint16_t index);
+    void threading_max(uint32_t starting_version, uint32_t ending_version, uint16_t index, std::vector<uint64_t>& max);
     std::vector<uint64_t> temporal_max(uint16_t index);
     TimelineIndex temporal_join(TimelineIndex other);
 

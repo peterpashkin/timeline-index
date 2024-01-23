@@ -16,7 +16,7 @@ uint64_t get_min_element_legacy(const std::multiset<uint64_t, std::greater<>>& m
 std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
     std::vector<uint64_t> result;
     std::multiset<uint64_t, std::greater<>> max_set;
-    const uint16_t k = 100;
+    const uint16_t k = 3;
 
     // generally the next two vectors are mostly irrelevant.
     // our assumption is that the values are mostly taken from the max_set

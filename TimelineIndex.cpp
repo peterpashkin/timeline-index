@@ -71,7 +71,7 @@ std::pair<version, checkpoint> TimelineIndex::find_nearest_checkpoint(version qu
     return *it;
 }
 
-
+//TODO time_travel doesn't work for joined tables -> evaluate values based on bitset, doesn't work because some indexes need to be added twice (x,y) (x,z)
 std::vector<Tuple> TimelineIndex::time_travel(uint32_t version) {
     auto [nearest_checkpoint_version, bitset] = find_nearest_checkpoint(version);
 
@@ -192,17 +192,29 @@ bool is_in_vector(std::vector<uint64_t>& inserted_values, uint32_t value) {
 
 
 #ifndef LEGACY
-std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
-    std::vector<uint64_t> result;
+void TimelineIndex::threading_max(uint32_t starting_version, uint32_t ending_version, uint16_t index, std::vector<uint64_t>& max) {
+    auto activated_tuples = time_travel(starting_version);
     std::multiset<uint64_t, std::greater<>> max_set;
-    const uint16_t k = TOP_K;
-
-
     std::unordered_map<uint64_t, uint32_t> irrelevant_values;
     irrelevant_values.reserve(5'000'000);
 
-    bool fill_up = true;
-    for(int i=0; i<version_map.current_version; i++) {
+    // TODO determine if sorting is beneficial
+    std::sort(activated_tuples.begin(), activated_tuples.end(), [index](auto& a, auto& b) {return a[index] > b[index];});
+
+    //insert top-k into multiset
+    for(int i=0; i<TOP_K && i<activated_tuples.size(); ++i) {
+        max_set.insert(activated_tuples[i][index]);
+    }
+
+    // insert rest into map
+    for(int i=TOP_K; i<activated_tuples.size(); i++) {
+        ++irrelevant_values[activated_tuples[i][index]];
+    }
+
+    max[starting_version] = get_max_element(max_set);
+    bool fill_up = max_set.size() < TOP_K;
+
+    for(uint32_t i=starting_version+1; i<ending_version; ++i) {
         auto events = version_map.get_events(i);
         for(auto& event : events) {
 
@@ -214,9 +226,9 @@ std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
 
                 if(fill_up || max_set.empty()) {
                     max_set.insert(inserting_value);
-                    if(max_set.size() >= k) fill_up = false;
+                    if(max_set.size() >= TOP_K) fill_up = false;
                 } else if(inserting_value > smallest_element) {
-                    if(max_set.size() >= k) {
+                    if(max_set.size() >= TOP_K) {
                         max_set.erase(max_set.find(smallest_element));
                         ++irrelevant_values[smallest_element];
                     }
@@ -239,12 +251,12 @@ std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
                             if(fill_up) {
                                 max_set.insert(key);
                                 --irrelevant_values[key];
-                                if(max_set.size() >= k) fill_up = false;
+                                if(max_set.size() >= TOP_K) fill_up = false;
                                 continue;
                             }
                             smallest_element = get_min_element(max_set);
                             if(smallest_element >= key) break;
-                            if(max_set.size() >= k) {
+                            if(max_set.size() >= TOP_K) {
                                 max_set.erase(max_set.find(smallest_element));
                                 ++irrelevant_values[smallest_element];
                             }
@@ -257,9 +269,32 @@ std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
                 }
             }
         }
-        if(max_set.empty()) result.push_back(0);
-        else result.push_back(get_max_element(max_set));
+        if(!max_set.empty()) max[i] = get_max_element(max_set);
     }
+}
+
+
+
+std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
+    std::vector<uint64_t> result(version_map.current_version, 0);
+
+    std::vector<std::thread> threads;
+    std::vector<ThreadSum> args;
+
+    uint32_t step_size = version_map.current_version / THREAD_AMOUNT;
+
+    for(uint32_t i=0; i<THREAD_AMOUNT; i++) {
+        uint32_t starting_version = i * step_size;
+        uint32_t ending_version = (i+1) * step_size;
+        args.emplace_back(ThreadSum{result, starting_version, ending_version, index});
+        std::thread thread(&TimelineIndex::threading_max, this, starting_version, ending_version, index, std::ref(result));
+        threads.push_back(std::move(thread));
+    }
+
+    for(auto& thread : threads) {
+        thread.join();
+    }
+
 
     return result;
 }
