@@ -16,7 +16,7 @@ uint64_t get_min_element_legacy(const std::multiset<uint64_t, std::greater<>>& m
 std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
     std::vector<uint64_t> result;
     std::multiset<uint64_t, std::greater<>> max_set;
-    const uint16_t k = 3;
+    const uint16_t k = 500;
 
     // generally the next two vectors are mostly irrelevant.
     // our assumption is that the values are mostly taken from the max_set
@@ -67,13 +67,16 @@ std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
                     auto second_r_it = deleted_values.rbegin();
 
                     while(first_r_it != inserted_values.rend() && max_set.size() < k) {
-                        if(*first_r_it > *second_r_it) {
+                        if(second_r_it == deleted_values.rend() || *first_r_it > *second_r_it) {
                             max_set.insert(*first_r_it);
                             ++first_r_it;
                         } else {
                             ++first_r_it;
                             ++second_r_it;
                         }
+                    }
+                    for(auto moved_element: max_set) {
+                        deleted_values.push_back(moved_element);
                     }
                 }
             }

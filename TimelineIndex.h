@@ -53,6 +53,7 @@ public:
     std::vector<uint64_t> temporal_max(uint16_t index);
     TimelineIndex temporal_join(TimelineIndex other);
 
+    std::vector<Tuple> time_travel_joined(version query_version);
 };
 
 

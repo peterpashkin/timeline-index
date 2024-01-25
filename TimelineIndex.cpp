@@ -71,7 +71,6 @@ std::pair<version, checkpoint> TimelineIndex::find_nearest_checkpoint(version qu
     return *it;
 }
 
-//TODO time_travel doesn't work for joined tables -> evaluate values based on bitset, doesn't work because some indexes need to be added twice (x,y) (x,z)
 std::vector<Tuple> TimelineIndex::time_travel(uint32_t version) {
     auto [nearest_checkpoint_version, bitset] = find_nearest_checkpoint(version);
 
@@ -134,6 +133,7 @@ std::vector<uint64_t> TimelineIndex::temporal_sum(uint16_t index) {
     for(uint32_t i=0; i<THREAD_AMOUNT; i++) {
         uint32_t starting_version = i * step_size;
         uint32_t ending_version = (i+1) * step_size;
+        if(i == THREAD_AMOUNT-1) ending_version = version_map.current_version;
         args.emplace_back(ThreadSum{result, starting_version, ending_version, index});
         std::thread thread(&TimelineIndex::threading_sum, this, starting_version, ending_version, index, std::ref(result));
         threads.push_back(std::move(thread));
@@ -198,21 +198,30 @@ void TimelineIndex::threading_max(uint32_t starting_version, uint32_t ending_ver
     std::unordered_map<uint64_t, uint32_t> irrelevant_values;
     irrelevant_values.reserve(5'000'000);
 
-    // TODO determine if sorting is beneficial
-    std::sort(activated_tuples.begin(), activated_tuples.end(), [index](auto& a, auto& b) {return a[index] > b[index];});
+    // insert activated_tuples in a similar approach to rebuilding max_set
+    bool fill_up = true;
+    for(auto& tuples: activated_tuples) {
+        auto inserting_value = tuples[index];
+        if(fill_up) {
+            max_set.insert(inserting_value);
+            if(max_set.size() >= TOP_K) fill_up = false;
+            continue;
+        }
 
-    //insert top-k into multiset
-    for(int i=0; i<TOP_K && i<activated_tuples.size(); ++i) {
-        max_set.insert(activated_tuples[i][index]);
-    }
-
-    // insert rest into map
-    for(int i=TOP_K; i<activated_tuples.size(); i++) {
-        ++irrelevant_values[activated_tuples[i][index]];
+        auto smallest_element = get_min_element(max_set);
+        if(inserting_value > smallest_element) {
+            if(max_set.size() >= TOP_K) {
+                max_set.erase(max_set.find(smallest_element));
+                ++irrelevant_values[smallest_element];
+            }
+            max_set.insert(inserting_value);
+        } else {
+            ++irrelevant_values[inserting_value];
+        }
     }
 
     max[starting_version] = get_max_element(max_set);
-    bool fill_up = max_set.size() < TOP_K;
+    fill_up = max_set.size() < TOP_K;
 
     for(uint32_t i=starting_version+1; i<ending_version; ++i) {
         auto events = version_map.get_events(i);

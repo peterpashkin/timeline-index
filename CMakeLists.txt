@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 23)
 
 
 add_compile_options("-O3")
-add_compile_options("-DDEBUG")
+#add_compile_options("-DDEBUG")
 add_compile_options("-DBENCHMARK")
 #add_compile_options("-Wall")
 #add_compile_options("-Wextra")

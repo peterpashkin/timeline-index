@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include "TemporalTable.h"
+#include "TimelineIndex.h"
 
 std::vector<Tuple> TemporalTable::time_travel(uint32_t query_version) {
     std::vector<Tuple> result;
@@ -78,3 +79,31 @@ TemporalTable TemporalTable::temporal_join(TemporalTable&other, uint16_t index) 
 
     return result;
 }
+
+
+// this method computes the time travel of joined tables. It does not utilize checkpoints and therefore is not relevant and just here for testing purposes
+std::vector<Tuple> TimelineIndex::time_travel_joined(version query_version) {
+    std::vector<Tuple> result;
+
+    // the main difference will be that we construct a vector of uint32_t instead a bitset to allow having some
+    // values multiple times e.g. (x,y) (x,z) are activated
+    std::vector<uint32_t> row_ids(table.get_table_size(), 0);
+
+    auto events = version_map.get_events(0, query_version + 1);
+    for(auto& event : events) {
+        if(event.type == EventType::INSERT) {
+            row_ids[event.row_id] += 1;
+        } else {
+            row_ids[event.row_id] -= 1;
+        }
+    }
+
+    for(int i=0; i<row_ids.size(); i++) {
+        for(int u=0; u<row_ids[i]; u++) {
+            result.push_back(table.tuples[i].first);
+        }
+    }
+
+    return result;
+}
+

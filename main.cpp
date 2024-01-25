@@ -10,11 +10,11 @@
 #include <random>
 #include <cassert>
 
-#define TEMPORAL_TABLE_SIZE 2'200'00
-#define DISTINCT_VALUES 101ull
-#define LIFETIME 100 // determines how long a tuple lives, implicitly also determines the number of tuples that are still active
+#define TEMPORAL_TABLE_SIZE 2'200'000
+#define DISTINCT_VALUES 100'000ull
+#define LIFETIME 10000 // determines how long a tuple lives, implicitly also determines the number of tuples that are still active
 #define NUMBER_OF_VERSIONS 2'200'000
-#define ITERATIONS 10
+#define ITERATIONS 1000
 
 
 LifeSpan generate_life_span() {
@@ -46,6 +46,17 @@ void init_ascending_temporal_table(TemporalTable& table) {
     }
 }
 
+void init_descending_temporal_table(TemporalTable& table) {
+    for(uint32_t i=0; i<TEMPORAL_TABLE_SIZE; ++i) {
+        Tuple tuple{i+1};
+        uint32_t starting_version = NUMBER_OF_VERSIONS - (i % NUMBER_OF_VERSIONS) - 1;
+        uint32_t ending_version = starting_version + LIFETIME;
+        LifeSpan lifespan = {starting_version, ending_version};
+        if(lifespan.end >= NUMBER_OF_VERSIONS) lifespan.end = std::nullopt;
+        table.tuples.emplace_back(tuple, lifespan);
+    }
+}
+
 void time_travel_benchmark(TimelineIndex& index, TemporalTable& table) {
 #ifdef BENCHMARK
     uint64_t sum = 0;
@@ -69,7 +80,6 @@ void time_travel_benchmark(TimelineIndex& index, TemporalTable& table) {
     }
 
 #ifdef BENCHMARK
-    std::cout << "Time Travel benchmarking finished" << std::endl;
     std::cout << sum/ITERATIONS << std::endl;
 #endif
 }
@@ -81,7 +91,6 @@ void temporal_sum_benchmark(TimelineIndex& index, TemporalTable& table) {
     auto index_sum = index.temporal_sum(0);
 #ifdef BENCHMARK
     auto end = std::chrono::high_resolution_clock::now();
-    std::cout << "Temporal Sum benchmarking finished" << std::endl;
     std::cout << std::chrono::duration_cast<std::chrono::microseconds>(end-start).count() << std::endl;
 #endif
 #ifdef DEBUG
@@ -97,7 +106,6 @@ void temporal_max_benchmark(TimelineIndex& index, TemporalTable& table) {
     auto index_max = index.temporal_max(0);
 #ifdef BENCHMARK
     auto end = std::chrono::high_resolution_clock::now();
-    std::cout << "Temporal Max benchmarking finished" << std::endl;
     std::cout << std::chrono::duration_cast<std::chrono::microseconds>(end-start).count() << std::endl;
 #endif
 #ifdef DEBUG
@@ -113,13 +121,14 @@ void temporal_join_benchmark(TimelineIndex& index, TimelineIndex& index2, Tempor
     auto index_join = index.temporal_join(index2);
 #ifdef BENCHMARK
     auto end = std::chrono::high_resolution_clock::now();
-    std::cout << "Temporal Join benchmarking finished" << std::endl;
     std::cout << std::chrono::duration_cast<std::chrono::microseconds>(end-start).count() << std::endl;
 #endif
 #ifdef DEBUG
     auto table_join = main_table.temporal_join(second_table, 0);
     for(int i=0; i<ITERATIONS; i++) {
-        auto a = index_join.time_travel(i); auto b = table_join.time_travel(i);
+        auto traveling_version = i * NUMBER_OF_VERSIONS/ITERATIONS;
+        auto a = index_join.time_travel_joined(traveling_version);
+        auto b = table_join.time_travel(traveling_version);
         assert(a == b);
     }
 #endif
@@ -127,15 +136,23 @@ void temporal_join_benchmark(TimelineIndex& index, TimelineIndex& index2, Tempor
 
 
 int main() {
+
+    std::cout << "Starting tests with " << NUMBER_OF_VERSIONS << " versions and " << TEMPORAL_TABLE_SIZE << " tuples" << std::endl;
+    std::cout << "Additional information: Maximal Lifetime: " << LIFETIME << ", Distinct Values: " << DISTINCT_VALUES << std::endl;
+    std::cout << std::endl;
+
+
     std::srand(420);
     TemporalTable main_table(NUMBER_OF_VERSIONS, TEMPORAL_TABLE_SIZE);
     TemporalTable second_table(NUMBER_OF_VERSIONS, TEMPORAL_TABLE_SIZE);
     TemporalTable ascending_table(NUMBER_OF_VERSIONS, TEMPORAL_TABLE_SIZE);
+    TemporalTable descending_table(NUMBER_OF_VERSIONS, TEMPORAL_TABLE_SIZE);
 
 
     init_random_temporal_table(main_table);
     init_random_temporal_table(second_table);
     init_ascending_temporal_table(ascending_table);
+    init_descending_temporal_table(descending_table);
 
 
 // ------------------ Benchmarking Construction -------------------
@@ -146,11 +163,12 @@ int main() {
     TimelineIndex index(main_table);
     TimelineIndex index2(second_table);
     TimelineIndex ascending_index(ascending_table);
+    TimelineIndex descending_index(descending_table);
 #ifdef BENCHMARK
     auto end = std::chrono::high_resolution_clock::now();
-    std::cout << "Construction finished" << std::endl;
-
-    std::cout << std::chrono::duration_cast<std::chrono::microseconds>(end-start).count()/3 << std::endl;
+    std::cout << "Construction: " << std::endl;
+    std::cout << std::chrono::duration_cast<std::chrono::microseconds>(end-start).count()/4 << std::endl;
+    std::cout << std::endl;
 #endif
 
 // ----------------------------------------------------------------
@@ -159,27 +177,39 @@ int main() {
 
 
 // ------------------ Benchmarking Time Travel --------------------
+    std::cout << "Time Travel testing, average on " << ITERATIONS << " iterations" << std::endl;
     time_travel_benchmark(index, main_table);
+    std::cout << std::endl;
 // ----------------------------------------------------------------
 
 
 
 //------------------ Benchmarking Temporal Sum --------------------
-    temporal_sum_benchmark(index, main_table);
-    temporal_sum_benchmark(ascending_index, ascending_table);
+    std::cout << "Temporal Sum testing" << std::endl;
+    std::cout << "Random values:     "; temporal_sum_benchmark(index, main_table);
+    std::cout << "Ascending values:  "; temporal_sum_benchmark(ascending_index, ascending_table);
+    std::cout << "Descending values: "; temporal_sum_benchmark(descending_index, descending_table);
+    std::cout << std::endl;
 // ----------------------------------------------------------------
 
 
 
 // ------------------ Benchmarking Temporal Max --------------------
-    temporal_max_benchmark(index, main_table);
-    temporal_max_benchmark(ascending_index, ascending_table);
+    std::cout << "Temporal Max testing" << std::endl;
+    std::cout << "Random values:     "; temporal_max_benchmark(index, main_table);
+    std::cout << "Ascending values:  "; temporal_max_benchmark(ascending_index, ascending_table);
+    std::cout << "Descending values: "; temporal_max_benchmark(descending_index, descending_table);
+    std::cout << std::endl;
 // ----------------------------------------------------------------
 
 
 
 // ------------------ Benchmarking Temporal Join --------------------
-    temporal_join_benchmark(index, index2, main_table, second_table);
+    std::cout << "Temporal Join testing" << std::endl;
+    std::cout << "Random on random:        "; temporal_join_benchmark(index, index2, main_table, second_table);
+    std::cout << "Random on ascending:     "; temporal_join_benchmark(index, ascending_index, main_table, ascending_table);
+    std::cout << "Random on descending:    "; temporal_join_benchmark(index, descending_index, main_table, descending_table);
+    std::cout << "Ascending on descending: "; temporal_join_benchmark(ascending_index, descending_index, ascending_table, descending_table);
 // ----------------------------------------------------------------
 
 
