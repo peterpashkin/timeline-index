@@ -7,6 +7,7 @@
 #include "TemporalTable.h"
 #include <unordered_set>
 #include <unordered_map>
+#include <algorithm>
 
 #ifndef TIMELINEINDEX_TIMELINEINDEX_H
 #define TIMELINEINDEX_TIMELINEINDEX_H

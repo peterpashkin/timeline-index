@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 #include <span>
+#include <cstdint>
 
 #ifndef TIMELINEINDEX_EVENTLIST_H
 #define TIMELINEINDEX_EVENTLIST_H
