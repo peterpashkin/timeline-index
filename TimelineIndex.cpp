@@ -40,7 +40,7 @@ void TimelineIndex::append_version(std::vector<Event>& events) {
     version_map.register_version(events);
 }
 
-#ifndef LEGACY
+
 std::pair<version, checkpoint> TimelineIndex::find_nearest_checkpoint(version query_version) {
     if(checkpoints.empty()) {
         // used for joined index
@@ -97,7 +97,6 @@ std::vector<Tuple> TimelineIndex::time_travel(uint32_t version) {
 
     return table.get_tuples(bitset);
 }
-#endif
 
 
 void TimelineIndex::threading_sum(uint32_t starting_version, uint32_t ending_version, uint16_t index, std::vector<uint64_t>& sum) {
@@ -168,27 +167,6 @@ bool is_in_vector(std::vector<uint64_t>& inserted_values, uint32_t value) {
 
 
 
-/* ------------------------------ BENCHMARKING ------------------------------
- * N = 200k
- * distinct = 101
- * sorting approach:
- * k = 15: 863319
- * k = 50: 219045
- * k = 100: 132.071 (2mil: 15.675.456)
- * k = 1000: 55.162 (2mil: 1.314.958)
- * k = 5000: (2mil: 642.517)
- *
- * unordered_map appraoch:
- * k = 15: 50.477
- * k = 50: 40.995
- * k = 100: 62.505 (2mil: 602.403)
- * k = 1000: 59.373 (2mil: 551.212)
- * k = 5000: (2mil: 655.069)
- *
- *
-
-
-----------------------------------------------------------------------------*/
 
 
 #ifndef LEGACY

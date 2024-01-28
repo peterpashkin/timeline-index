@@ -39,6 +39,7 @@ class TimelineIndex {
     const uint64_t temporal_table_size;
 
     std::pair<version, checkpoint> find_nearest_checkpoint(version query_version);
+    std::pair<version, checkpoint> find_earlier_checkpoint(version query_version);
 
 public:
     explicit TimelineIndex(TemporalTable& table);
@@ -54,6 +55,13 @@ public:
     TimelineIndex temporal_join(TimelineIndex other);
 
     std::vector<Tuple> time_travel_joined(version query_version);
+
+
+
+    std::vector<uint64_t> temporal_sum_original(uint16_t index);
+    std::vector<uint64_t> temporal_max_original(uint16_t index);
+    std::vector<uint64_t> temporal_max_hashmap(uint16_t index);
+    std::vector<Tuple> time_travel_original(version query_version);
 };
 
 
