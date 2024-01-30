@@ -22,7 +22,6 @@ std::vector<uint64_t> TimelineIndex::temporal_max_original(uint16_t index) {
     // the vectors are only used if the multiset gets empty -> all values removed in a row, highly unlikely
 
     std::vector<uint64_t> inserted_values;
-    // use unordered_map ??
     std::vector<uint64_t> deleted_values;
 
     bool fill_up = true;
@@ -107,6 +106,29 @@ std::vector<uint64_t> TimelineIndex::temporal_sum_original(uint16_t index) {
 
     return result;
 }
+
+std::vector<uint64_t> TimelineIndex::temporal_max_multiset(uint16_t index) {
+    std::vector<uint64_t> result;
+    std::multiset<uint64_t, std::greater<>> max_set;
+
+    for(int i=0; i<version_map.current_version; i++) {
+        auto events = version_map.get_events(i);
+        for(auto& event: events) {
+            auto inserting_value = table.tuples[event.row_id].first[index];
+
+            if(event.type == EventType::INSERT) {
+                max_set.insert(inserting_value);
+            } else {
+                max_set.erase(max_set.find(inserting_value));
+            }
+        }
+        if(max_set.empty()) result.push_back(0);
+        else result.push_back(get_max_element_legacy(max_set));
+    }
+
+    return result;
+}
+
 
 std::vector<uint64_t> TimelineIndex::temporal_max_hashmap(uint16_t index) {
     std::vector<uint64_t> result;

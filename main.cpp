@@ -11,10 +11,10 @@
 #include <cassert>
 #include <iomanip>
 
-#define TEMPORAL_TABLE_SIZE 3'400'00
+#define TEMPORAL_TABLE_SIZE 3'400'000
 #define DISTINCT_VALUES 100'000ull
 #define LIFETIME 10000 // determines how long a tuple lives, implicitly also determines the number of tuples that are still active
-#define NUMBER_OF_VERSIONS 2'200'00
+#define NUMBER_OF_VERSIONS 2'200'000
 #define ITERATIONS 100
 
 
@@ -207,19 +207,22 @@ int main() {
     auto random_main_max = temporal_max_benchmark(index, main_table, &TimelineIndex::temporal_max);
     auto random_original_max = temporal_max_benchmark(index, main_table, &TimelineIndex::temporal_max_original);
     auto random_hashmap_max = temporal_max_benchmark(index, main_table, &TimelineIndex::temporal_max_hashmap);
+    auto random_multiset_max = temporal_max_benchmark(index, main_table, &TimelineIndex::temporal_max_multiset);
 
     auto ascending_main_max = temporal_max_benchmark(ascending_index, ascending_table, &TimelineIndex::temporal_max);
     auto ascending_original_max = temporal_max_benchmark(ascending_index, ascending_table, &TimelineIndex::temporal_max_original);
     auto ascending_hashmap_max = temporal_max_benchmark(ascending_index, ascending_table, &TimelineIndex::temporal_max_hashmap);
+    auto ascending_multiset_max = temporal_max_benchmark(ascending_index, ascending_table, &TimelineIndex::temporal_max_multiset);
 
     auto descending_main_max = temporal_max_benchmark(descending_index, descending_table, &TimelineIndex::temporal_max);
     auto descending_original_max = temporal_max_benchmark(descending_index, descending_table, &TimelineIndex::temporal_max_original);
     auto descending_hashmap_max = temporal_max_benchmark(descending_index, descending_table, &TimelineIndex::temporal_max_hashmap);
+    auto descending_multiset_max = temporal_max_benchmark(descending_index, descending_table, &TimelineIndex::temporal_max_multiset);
 
-    std::cout << "                  Modified Temporal Max     HashMap Temporal Max    Original Temporal Max" << std::endl;
-    std::cout << "Random values:      " << std::setw(8) << random_main_max << "                 " << std::setw(8) << random_hashmap_max << "                 " << std::setw(8) << random_original_max << std::endl;
-    std::cout << "Ascending values:   " << std::setw(8) << ascending_main_max << "                 " << std::setw(8) << ascending_hashmap_max << "                 " << std::setw(8) << ascending_original_max << std::endl;
-    std::cout << "Descending values:  " << std::setw(8) << descending_main_max << "                 " << std::setw(8) << descending_hashmap_max << "                 " << std::setw(8) << descending_original_max << std::endl;
+    std::cout << "                  Modified Temporal Max     HashMap Temporal Max    Original Temporal Max   Multiset Temporal Max" << std::endl;
+    std::cout << "Random values:      " << std::setw(8) << random_main_max << "                 " << std::setw(8) << random_hashmap_max << "                 " << std::setw(8) << random_original_max << "                 " << std::setw(8) << random_multiset_max << std::endl;
+    std::cout << "Ascending values:   " << std::setw(8) << ascending_main_max << "                 " << std::setw(8) << ascending_hashmap_max << "                 " << std::setw(8) << ascending_original_max  << "                 " << std::setw(8) << ascending_multiset_max << std::endl;
+    std::cout << "Descending values:  " << std::setw(8) << descending_main_max << "                 " << std::setw(8) << descending_hashmap_max << "                 " << std::setw(8) << descending_original_max << "                 " << std::setw(8) << descending_multiset_max << std::endl;
     std::cout << std::endl;
     std::cout << std::endl;
 // ----------------------------------------------------------------

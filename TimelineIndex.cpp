@@ -166,10 +166,6 @@ bool is_in_vector(std::vector<uint64_t>& inserted_values, uint32_t value) {
 }
 
 
-
-
-
-#ifndef LEGACY
 void TimelineIndex::threading_max(uint32_t starting_version, uint32_t ending_version, uint16_t index, std::vector<uint64_t>& max) {
     auto activated_tuples = time_travel(starting_version);
     std::multiset<uint64_t, std::greater<>> max_set;
@@ -285,7 +281,6 @@ std::vector<uint64_t> TimelineIndex::temporal_max(uint16_t index) {
 
     return result;
 }
-#endif
 
 TimelineIndex TimelineIndex::temporal_join(TimelineIndex other) {
     std::unordered_map<uint64_t, Intersection> intersection_map;

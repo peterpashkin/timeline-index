@@ -62,6 +62,7 @@ public:
     std::vector<uint64_t> temporal_sum_original(uint16_t index);
     std::vector<uint64_t> temporal_max_original(uint16_t index);
     std::vector<uint64_t> temporal_max_hashmap(uint16_t index);
+    std::vector<uint64_t> temporal_max_multiset(uint16_t index);
     std::vector<Tuple> time_travel_original(version query_version);
 };
 
