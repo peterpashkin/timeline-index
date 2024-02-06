@@ -2,7 +2,6 @@
 // Created by Peter Pashkin on 04.12.23.
 //
 
-// TODO do a parent class to cover EventList and DoubleEventList (i think generics are better)
 #include <iostream>
 #include <utility>
 #include <vector>
