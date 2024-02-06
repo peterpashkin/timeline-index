@@ -1,3 +1,88 @@
-/cmake-build-debug/*
-*.a
+### C++ ###
+# Object files
 *.o
+*.obj
+*.tmp
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Libraries
+*.lib
+*.a
+*.so
+*.dylib
+*.dll
+
+# Binary and Executable files
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# Optimization data
+*.optrpt
+*.pgd
+*.pgc
+
+### CMake ###
+# Build folder
+build/
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.make
+
+# CMake user files
+*.user
+*.user.*
+
+### CLion ###
+# User-specific stuff
+.idea/
+*.iml
+
+# Generated files
+misc.xml
+modules.xml
+workspace.xml
+
+# Sensitive or high-churn files
+history/
+
+# Coverage directory used by tools like gcov
+coverage/
+
+# External tool builders
+.externalToolBuilders/
+
+### OS-specific ###
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Thumbnails
+._*
+
+# Files that might appear in the root of a volume
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+
+# Direct

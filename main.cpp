@@ -1,8 +1,6 @@
 //
 // Created by pedda on 20-1-24.
 //
-#pragma once
-
 #include "TemporalTable.h"
 #include "TimelineIndex.h"
 #include <iostream>

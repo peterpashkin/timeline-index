@@ -3,17 +3,25 @@ project(TimelineIndex)
 
 set(CMAKE_CXX_STANDARD 23)
 
+# Set default build type if not specified
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
+endif()
 
-add_compile_options("-O3")
-#add_compile_options("-DDEBUG")
-add_compile_options("-DBENCHMARK")
-#add_compile_options("-Wall")
-#add_compile_options("-Wextra")
-#add_compile_options("-DLEGACY")
+# Common compile options
 add_compile_options("-pthread")
 
+# Debug-specific settings
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG -Wall -fsanitize=address")
+set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fsanitize=address")
 
+# Release-specific settings
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 
+# Definitions common to all builds
+add_definitions("-DBENCHMARK")
+
+# Source files
 add_executable(TimelineIndex
         TimelineIndex.h
         VersionMap.h
@@ -28,5 +36,5 @@ add_executable(TimelineIndex
         dynamic_bitset.cpp
         dynamic_bitset.h
         legacy_functions.cpp
-        legacy_functions.cpp
 )
+

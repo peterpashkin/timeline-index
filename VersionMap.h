@@ -11,8 +11,6 @@
 #define TIMELINEINDEX_VERSIONMAP_H
 
 
-//TODO WE WILL MAINTAIN THE POINTER AS POINTING TO LAST ELEMENT NOT IN EVENT
-
 /**
  * @brief VersionMap class
  * @details This class represents a map of all the versions of the Timeline.
@@ -26,7 +24,7 @@ class VersionMap {
 
 public:
     uint64_t current_version{0};
-    uint64_t event_number;
+    uint64_t event_number{0};
 
     VersionMap() = default;
     VersionMap(TemporalTable& table);
