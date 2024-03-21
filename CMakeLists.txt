@@ -33,8 +33,7 @@ add_executable(TimelineIndex
         TemporalTable.cpp
         TempTableTesting.cpp
         main.cpp
-        dynamic_bitset.cpp
-        dynamic_bitset.h
+        Tree.h
         legacy_functions.cpp
 )
 

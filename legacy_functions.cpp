@@ -207,13 +207,13 @@ std::vector<uint64_t> TimelineIndex::temporal_max_hashmap(uint16_t index) {
 std::pair<version, checkpoint> TimelineIndex::find_earlier_checkpoint(version query_version) {
     if(checkpoints.empty()) {
         // used for joined index
-        return {0, dynamic_bitset(temporal_table_size)};
+        return {0, checkpoint()};
     }
     if (query_version < checkpoints[0].first) {
         throw std::invalid_argument("Version does not exist");
     }
 
-    std::pair search_val{query_version, dynamic_bitset(0)};
+    std::pair search_val{query_version, checkpoint()};
 
     auto it = std::upper_bound(checkpoints.begin(), checkpoints.end(), search_val,
         [](auto x, auto y) -> bool {return x.first < y.first;});
@@ -228,12 +228,14 @@ std::vector<Tuple> TimelineIndex::time_travel_original(uint32_t version) {
     auto last_checkpoint_version = last_checkpoint.first;
     auto bitset = last_checkpoint.second;
 
+
     auto events = version_map.get_events( last_checkpoint_version + 1, version + 1);
+
     for(auto& event : events) {
         if(event.type == EventType::INSERT) {
-            bitset.set(event.row_id);
+            bitset.insert(event.row_id);
         } else {
-            bitset.reset(event.row_id);
+            bitset.remove(event.row_id);
         }
     }
 

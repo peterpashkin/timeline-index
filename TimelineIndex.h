@@ -5,6 +5,7 @@
 #include "EventList.h"
 #include "VersionMap.h"
 #include "TemporalTable.h"
+#include "Tree.h"
 #include <unordered_set>
 #include <unordered_map>
 #include <algorithm>
@@ -12,7 +13,7 @@
 #ifndef TIMELINEINDEX_TIMELINEINDEX_H
 #define TIMELINEINDEX_TIMELINEINDEX_H
 
-typedef dynamic_bitset checkpoint;
+typedef Tree<uint32_t, 16> checkpoint;
 typedef uint32_t version;
 
 struct Intersection {

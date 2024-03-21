@@ -9,11 +9,13 @@
 #include <cassert>
 #include <iomanip>
 
-#define TEMPORAL_TABLE_SIZE 3'400'000
+#define TEMPORAL_TABLE_SIZE 3'40'00
 #define DISTINCT_VALUES 100'000ull
 #define LIFETIME 10000 // determines how long a tuple lives, implicitly also determines the number of tuples that are still active
-#define NUMBER_OF_VERSIONS 2'200'000
+#define NUMBER_OF_VERSIONS 2'20'00
 #define ITERATIONS 100
+
+
 
 
 LifeSpan generate_life_span() {

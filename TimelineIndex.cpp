@@ -4,6 +4,7 @@
 
 #include "TimelineIndex.h"
 #include <assert.h>
+#include "Tree.h"
 #include <set>
 #include <thread>
 
@@ -11,24 +12,25 @@
 #define TOP_K 100
 #define THREAD_AMOUNT 4
 
+
 TimelineIndex::TimelineIndex(TemporalTable& given_table) : table(given_table), temporal_table_size(given_table.get_table_size()), joined_table(given_table) {
     version_map = VersionMap(given_table);
 
     // for now checkpoints we will create 100 checkpoints
     uint32_t step_size = std::max(given_table.next_version / CHECKPOINT_AMOUNT, 1u);
-    dynamic_bitset current_bitset(temporal_table_size);
+    checkpoint current_bitset;
 
     for(int i=0; i<given_table.next_version; i++) {
         auto events = version_map.get_events(i);
         for(auto& event : events) {
             if(event.type == EventType::INSERT) {
-                current_bitset.set(event.row_id);
+                current_bitset.insert(event.row_id);
             } else if(event.type == EventType::DELETE) {
-                current_bitset.reset(event.row_id);
+                current_bitset.remove(event.row_id);
             }
         }
         if(i % step_size == 0) {
-            checkpoints.emplace_back(i, current_bitset);
+            checkpoints.emplace_back(i, std::move(current_bitset));
         }
     }
 
@@ -44,13 +46,13 @@ void TimelineIndex::append_version(std::vector<Event>& events) {
 std::pair<version, checkpoint> TimelineIndex::find_nearest_checkpoint(version query_version) {
     if(checkpoints.empty()) {
         // used for joined index
-        return {0, dynamic_bitset(temporal_table_size)};
+        return {0, checkpoint()};
     }
     if (query_version < checkpoints[0].first) {
         throw std::invalid_argument("Version does not exist");
     }
 
-    std::pair search_val{query_version, dynamic_bitset(0)};
+    std::pair search_val{query_version, Tree<uint32_t, 32>()};
 
     auto it = std::upper_bound(checkpoints.begin(), checkpoints.end(), search_val,
         [](auto x, auto y) -> bool {return x.first < y.first;});
@@ -78,9 +80,9 @@ std::vector<Tuple> TimelineIndex::time_travel(uint32_t version) {
         auto events = version_map.get_events(nearest_checkpoint_version + 1, version + 1);
         for(auto& event : events) {
             if(event.type == EventType::INSERT) {
-                bitset.set(event.row_id);
+                bitset.insert(event.row_id);
             } else if(event.type == EventType::DELETE) {
-                bitset.reset(event.row_id);
+                bitset.remove(event.row_id);
             }
         }
     } else {
@@ -88,9 +90,9 @@ std::vector<Tuple> TimelineIndex::time_travel(uint32_t version) {
         auto event = events.rbegin();
         for(; event != events.rend(); ++event) {
             if(event->type == EventType::DELETE) {
-                bitset.set(event->row_id);
+                bitset.insert(event->row_id);
             } else if(event->type == EventType::INSERT) {
-                bitset.reset(event->row_id);
+                bitset.remove(event->row_id);
             }
         }
     }
@@ -194,7 +196,7 @@ void TimelineIndex::threading_max(uint32_t starting_version, uint32_t ending_ver
         }
     }
 
-    max[starting_version] = get_max_element(max_set);
+    max[starting_version] = max_set.empty() ? 0:get_max_element(max_set);
     fill_up = max_set.size() < TOP_K;
 
     for(uint32_t i=starting_version+1; i<ending_version; ++i) {

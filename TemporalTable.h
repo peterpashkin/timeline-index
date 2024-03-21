@@ -6,7 +6,7 @@
 #include <vector>
 #include <span>
 #include <optional>
-#include "dynamic_bitset.h"
+#include "Tree.h"
 
 #ifndef TIMELINEINDEX_TEMPORALTABLE_H
 #define TIMELINEINDEX_TEMPORALTABLE_H
@@ -18,6 +18,7 @@
  * @details This class represents a tuple from the Temporal Table, which is a vector of spans
  */
 typedef std::vector<uint64_t> Tuple;
+typedef Tree<uint32_t, 16> checkpoint;
 
 struct LifeSpan {
     uint32_t start;
@@ -50,7 +51,7 @@ public:
      * @param bitset
      * @return
      */
-    std::vector<Tuple> get_tuples(dynamic_bitset bitset);
+    std::vector<Tuple> get_tuples(checkpoint& bitset);
 
     /**
      *
