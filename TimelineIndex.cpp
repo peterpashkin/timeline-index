@@ -28,7 +28,7 @@ TimelineIndex::TimelineIndex(TemporalTable& given_table) : table(given_table), t
             }
         }
         if(i % step_size == 0) {
-            checkpoints.emplace_back(i, current_bitset);
+            checkpoints.emplace_back(0, current_bitset);
         }
     }
 
@@ -41,16 +41,12 @@ void TimelineIndex::append_version(std::vector<Event>& events) {
 }
 
 
-std::pair<version, checkpoint> TimelineIndex::find_nearest_checkpoint(version query_version) {
-    if(checkpoints.empty()) {
-        // used for joined index
-        return {0, dynamic_bitset(temporal_table_size)};
-    }
+std::pair<version, checkpoint>& TimelineIndex::find_nearest_checkpoint(version query_version) {
     if (query_version < checkpoints[0].first) {
         throw std::invalid_argument("Version does not exist");
     }
 
-    std::pair search_val{query_version, dynamic_bitset(0)};
+    std::pair search_val = std::make_pair(query_version, checkpoint(0));
 
     auto it = std::upper_bound(checkpoints.begin(), checkpoints.end(), search_val,
         [](auto x, auto y) -> bool {return x.first < y.first;});
@@ -72,7 +68,7 @@ std::pair<version, checkpoint> TimelineIndex::find_nearest_checkpoint(version qu
 }
 
 std::vector<Tuple> TimelineIndex::time_travel(uint32_t version) {
-    auto [nearest_checkpoint_version, bitset] = find_nearest_checkpoint(version);
+    auto& [nearest_checkpoint_version, bitset] = find_nearest_checkpoint(version);
 
     if(nearest_checkpoint_version <= version) {
         auto events = version_map.get_events(nearest_checkpoint_version + 1, version + 1);
@@ -94,7 +90,7 @@ std::vector<Tuple> TimelineIndex::time_travel(uint32_t version) {
             }
         }
     }
-
+    nearest_checkpoint_version = version;
     return table.get_tuples(bitset);
 }
 

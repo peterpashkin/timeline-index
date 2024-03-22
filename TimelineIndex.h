@@ -39,8 +39,8 @@ class TimelineIndex {
     std::vector<std::pair<version, checkpoint>> checkpoints;
     const uint64_t temporal_table_size;
 
-    std::pair<version, checkpoint> find_nearest_checkpoint(version query_version);
-    std::pair<version, checkpoint> find_earlier_checkpoint(version query_version);
+    std::pair<version, checkpoint>& find_nearest_checkpoint(version query_version);
+    std::pair<version, checkpoint>& find_earlier_checkpoint(version query_version);
 
 public:
     explicit TimelineIndex(TemporalTable& table);

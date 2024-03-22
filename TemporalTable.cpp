@@ -13,7 +13,7 @@ uint64_t TemporalTable::get_table_size() {
     return tuples.size();
 }
 
-std::vector<Tuple> TemporalTable::get_tuples(dynamic_bitset bitset) {
+std::vector<Tuple> TemporalTable::get_tuples(dynamic_bitset& bitset) {
     std::vector<Tuple> result;
     result.reserve(bitset.set_bits);
     std::vector<uint64_t> set_bits;

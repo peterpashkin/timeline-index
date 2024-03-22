@@ -50,7 +50,7 @@ public:
      * @param bitset
      * @return
      */
-    std::vector<Tuple> get_tuples(dynamic_bitset bitset);
+    std::vector<Tuple> get_tuples(dynamic_bitset& bitset);
 
     /**
      *

@@ -204,16 +204,12 @@ std::vector<uint64_t> TimelineIndex::temporal_max_hashmap(uint16_t index) {
 
 
 
-std::pair<version, checkpoint> TimelineIndex::find_earlier_checkpoint(version query_version) {
-    if(checkpoints.empty()) {
-        // used for joined index
-        return {0, dynamic_bitset(temporal_table_size)};
-    }
+std::pair<version, checkpoint>& TimelineIndex::find_earlier_checkpoint(version query_version) {
     if (query_version < checkpoints[0].first) {
         throw std::invalid_argument("Version does not exist");
     }
 
-    std::pair search_val{query_version, dynamic_bitset(0)};
+    std::pair search_val = std::make_pair(query_version, dynamic_bitset(0));
 
     auto it = std::upper_bound(checkpoints.begin(), checkpoints.end(), search_val,
         [](auto x, auto y) -> bool {return x.first < y.first;});
@@ -224,9 +220,8 @@ std::pair<version, checkpoint> TimelineIndex::find_earlier_checkpoint(version qu
 
 
 std::vector<Tuple> TimelineIndex::time_travel_original(uint32_t version) {
-    auto last_checkpoint = find_earlier_checkpoint(version);
-    auto last_checkpoint_version = last_checkpoint.first;
-    auto bitset = last_checkpoint.second;
+    auto& [last_checkpoint_version, bitset] = find_earlier_checkpoint(version);
+
 
     auto events = version_map.get_events( last_checkpoint_version + 1, version + 1);
     for(auto& event : events) {
@@ -236,6 +231,7 @@ std::vector<Tuple> TimelineIndex::time_travel_original(uint32_t version) {
             bitset.reset(event.row_id);
         }
     }
+    last_checkpoint_version = version;
 
     return table.get_tuples(bitset);
 }
